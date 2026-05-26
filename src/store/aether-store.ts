@@ -85,6 +85,18 @@ interface AetherState {
   incrementPage: () => void
   resetPage: () => void
   appendMemories: (memories: Memory[]) => void
+
+  // ─── Offline / Sync State ───
+  isOnline: boolean
+  setIsOnline: (v: boolean) => void
+  isSyncing: boolean
+  setIsSyncing: (v: boolean) => void
+  pendingSyncCount: number
+  setPendingSyncCount: (v: number) => void
+  lastSyncedAt: string | null
+  setLastSyncedAt: (v: string | null) => void
+  showOfflineBanner: boolean
+  setShowOfflineBanner: (v: boolean) => void
 }
 
 export const useAetherStore = create<AetherState>((set) => ({
@@ -181,4 +193,16 @@ export const useAetherStore = create<AetherState>((set) => ({
   incrementPage: () => set((s) => ({ memoriesPage: s.memoriesPage + 1 })),
   resetPage: () => set({ memoriesPage: 0, hasMoreMemories: true }),
   appendMemories: (newMemories) => set((s) => ({ memories: [...s.memories, ...newMemories] })),
+
+  // ─── Offline / Sync State ───
+  isOnline: typeof window !== 'undefined' ? navigator.onLine : true,
+  setIsOnline: (v) => set({ isOnline: v }),
+  isSyncing: false,
+  setIsSyncing: (v) => set({ isSyncing: v }),
+  pendingSyncCount: 0,
+  setPendingSyncCount: (v) => set({ pendingSyncCount: v }),
+  lastSyncedAt: null,
+  setLastSyncedAt: (v) => set({ lastSyncedAt: v }),
+  showOfflineBanner: false,
+  setShowOfflineBanner: (v) => set({ showOfflineBanner: v }),
 }))

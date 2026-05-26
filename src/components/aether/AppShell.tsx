@@ -1,11 +1,13 @@
 'use client'
 
-import { ReactNode, memo, useMemo } from 'react'
-import { Brain, FolderOpen, Settings, Search, Plus, Home } from 'lucide-react'
+import { ReactNode, memo, useMemo, useEffect } from 'react'
+import { Brain, FolderOpen, Settings, Search, Plus, Home, WifiOff, Cloud, CheckCircle2 } from 'lucide-react'
 import { useAetherStore } from '@/store/aether-store'
+import { useOnlineStatus } from '@/hooks/use-online-status'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { AetherLogo } from '@/components/aether/AetherLogo'
 import type { AppView } from '@/components/aether/types'
+import { getSyncQueueCount } from '@/lib/offline-db'
 
 /* ─────────── Navigation Configuration ─────────── */
 interface NavItem {
@@ -102,6 +104,54 @@ const BottomNavItem = memo(function BottomNavItem({
   )
 })
 
+/* ─────────── Offline Banner ─────────── */
+function OfflineBanner() {
+  const isOnline = useOnlineStatus()
+  const { isSyncing, pendingSyncCount, setIsOnline, setIsSyncing, setPendingSyncCount } = useAetherStore()
+
+  // Sync online status and pending count
+  useEffect(() => {
+    setIsOnline(isOnline)
+    if (isOnline) {
+      getSyncQueueCount().then(setPendingSyncCount)
+    }
+  }, [isOnline, setIsOnline, setPendingSyncCount])
+
+  if (isOnline && !isSyncing && pendingSyncCount === 0) return null
+
+  // Offline banner
+  if (!isOnline) {
+    return (
+      <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-center gap-2 text-xs text-amber-700">
+        <WifiOff size={14} className="shrink-0" />
+        <span>You are offline — showing cached memories</span>
+      </div>
+    )
+  }
+
+  // Syncing banner
+  if (isSyncing) {
+    return (
+      <div className="bg-[#9D8BA7]/5 border-b border-[#9D8BA7]/10 px-4 py-2 flex items-center justify-center gap-2 text-xs text-[#9D8BA7]">
+        <Cloud size={14} className="shrink-0 animate-pulse" />
+        <span>Syncing your memories...</span>
+      </div>
+    )
+  }
+
+  // Pending items but not actively syncing
+  if (pendingSyncCount > 0) {
+    return (
+      <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-center gap-2 text-xs text-emerald-700">
+        <CheckCircle2 size={14} className="shrink-0" />
+        <span>{pendingSyncCount} memories queued to sync</span>
+      </div>
+    )
+  }
+
+  return null
+}
+
 /* ─────────── Main AppShell Component ─────────── */
 export default function AppShell({ children }: { children: ReactNode }) {
   const { currentView, setCurrentView, setCaptureModalOpen, profile, user } = useAetherStore()
@@ -152,6 +202,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Main Content Area */}
       <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
+        {/* Offline/Sync Banner */}
+        <OfflineBanner />
+
         {/* Top Header - Mobile (simplified) */}
         <header className="md:hidden sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border">
           <div className="flex items-center gap-3 px-4 h-12 safe-area-top">

@@ -50,6 +50,7 @@ function formatDate(iso: string): string {
 
 const MemoryCard = memo(function MemoryCard({ memory, onClick }: { memory: Memory; onClick: () => void }) {
   const isTagging = memory.taggingStatus === 'tagging' || memory.taggingStatus === 'pending'
+  const isSyncing = memory.syncStatus === 'pending' || memory.syncStatus === 'syncing'
 
   return (
     <button
@@ -82,6 +83,16 @@ const MemoryCard = memo(function MemoryCard({ memory, onClick }: { memory: Memor
                   {tag}
                 </span>
               ))}
+              {/* Sync indicator for offline-captured memories */}
+              {isSyncing && !isTagging && (
+                <span className="inline-flex items-center gap-1 text-[9px] text-amber-600/70 bg-amber-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  <span className="relative flex size-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400/40 opacity-75" />
+                    <span className="relative inline-flex rounded-full size-1.5 bg-amber-500/70" />
+                  </span>
+                  Syncing...
+                </span>
+              )}
               {/* Aether is thinking indicator */}
               {isTagging && (
                 <span className="inline-flex items-center gap-1 text-[9px] text-[#9D8BA7]/60 bg-[#9D8BA7]/5 px-2 py-0.5 rounded-full whitespace-nowrap">
@@ -400,6 +411,9 @@ function QuickCaptureModal() {
         break
     }
 
+    // Check if we're offline
+    const isOffline = !navigator.onLine
+
     // Step 2: Add memory to store IMMEDIATELY with fallback tags + tagging status
     addMemory({
       id: tempId,
@@ -408,7 +422,8 @@ function QuickCaptureModal() {
       content,
       tags: fallbackTags,
       createdAt: new Date().toISOString(),
-      taggingStatus: 'pending',
+      taggingStatus: isOffline ? 'complete' : 'pending', // Skip AI tagging when offline
+      syncStatus: isOffline ? 'pending' : 'synced', // Mark as pending sync when offline
       ...(aiSummary ? { aiSummary } : {}),
       ...(activeCaptureTab === 'link' && linkUrl ? { source: linkUrl } : {}),
       ...(activeCaptureTab === 'image' && imagePreview ? { imagePreview } : {}),
@@ -425,6 +440,26 @@ function QuickCaptureModal() {
     }, 2000)
 
     // Step 5: In the background — save to Supabase AND generate AI tags simultaneously
+    // If offline, data.ts handles queueing — we just update the local state
+    if (isOffline) {
+      clearTimeout(taggingTimeout)
+      // createMemory in data.ts will save to IndexedDB and queue for sync
+      try {
+        await createMemory({
+          type: activeCaptureTab,
+          title,
+          content,
+          tags: fallbackTags,
+          ...(aiSummary ? { summary: aiSummary } : {}),
+          ...(activeCaptureTab === 'link' && linkUrl ? { sourceUrl: linkUrl } : {}),
+          ...(activeCaptureTab === 'image' && imagePreview ? { imagePreview } : {}),
+        })
+      } catch {
+        // Offline save to IndexedDB failed — memory is still in the store
+      }
+      return
+    }
+
     try {
       // Check free plan limit first
       if (user?.plan === 'free') {

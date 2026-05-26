@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { useAetherStore } from '@/store/aether-store'
 import { useToast } from '@/hooks/use-toast'
+import { useOnlineStatus } from '@/hooks/use-online-status'
 import { signOut, updateProfile, exportAllMemories } from '@/lib/supabase/data'
 import {
   AlertDialog,
@@ -64,6 +65,7 @@ export function Settings() {
   } = useAetherStore()
 
   const { toast } = useToast()
+  const isOnline = useOnlineStatus()
 
   // Profile editing state
   const [isEditing, setIsEditing] = useState(false)
@@ -120,7 +122,7 @@ export function Settings() {
 
       setProfile({ ...profile, name: trimmedName, email: trimmedEmail, initials })
       setIsEditing(false)
-      toast({ title: 'Profile updated!', description: 'Your changes have been saved.' })
+      toast({ title: 'Profile updated!', description: !isOnline ? 'Changes saved locally — will sync when you reconnect.' : 'Your changes have been saved.' })
     } catch (err) {
       console.error('Failed to update profile:', err)
       toast({ title: 'Update failed', description: 'Could not save your profile. Please try again.', variant: 'destructive' })
@@ -174,7 +176,7 @@ export function Settings() {
 
       toast({
         title: 'Export complete!',
-        description: 'All memories exported as JSON from Supabase.',
+        description: !isOnline ? 'Exported from cached memories.' : 'All memories exported as JSON from Supabase.',
       })
     } catch (err) {
       console.error('Export failed:', err)
@@ -186,7 +188,7 @@ export function Settings() {
     } finally {
       setIsExporting(false)
     }
-  }, [toast])
+  }, [toast, isOnline])
 
   // ──── Logout handler ────
   const handleLogout = useCallback(async () => {

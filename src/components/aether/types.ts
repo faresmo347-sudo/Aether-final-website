@@ -14,6 +14,8 @@ export interface Memory {
   imagePreview?: string
   // Tagging status for optimistic UI
   taggingStatus?: 'pending' | 'tagging' | 'complete'
+  // Sync status for offline-first
+  syncStatus?: 'synced' | 'pending' | 'syncing'
   // Supabase fields
   userId?: string
   summary?: string

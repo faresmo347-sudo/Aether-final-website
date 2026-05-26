@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
+import { useOnlineStatus } from '@/hooks/use-online-status'
 import type { ChatMessage, MemoryType } from '@/components/aether/types'
 
 const starterQuestions = [
@@ -142,6 +143,7 @@ const ChatBubble = memo(function ChatBubble({
 /* ─────────── Ask Aether ─────────── */
 export function AskAether() {
   const { chatMessages, addChatMessage, isChatThinking, setChatThinking, memories, setCurrentView, setCaptureModalOpen } = useAetherStore()
+  const isOnline = useOnlineStatus()
   const [input, setInput] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -195,6 +197,31 @@ export function AskAether() {
     setInput('')
     setChatThinking(true)
 
+    // If offline, do a local keyword search through cached memories
+    if (!isOnline) {
+      const query = text.trim().toLowerCase()
+      const results = memories.filter((m) => {
+        const searchable = `${m.title} ${m.content} ${m.tags.join(' ')}`.toLowerCase()
+        return query.split(' ').some((word) => word.length > 2 && searchable.includes(word))
+      })
+
+      const offlineAnswer = results.length > 0
+        ? `I found ${results.length} cached memor${results.length === 1 ? 'y' : 'ies'} matching your question. Here's what I found:\n\n${results.slice(0, 3).map((m) => `- **${m.title}**: ${m.content.slice(0, 100)}...`).join('\n')}\n\n_Searching your cached memories — reconnect for full AI-powered results._`
+        : "I couldn't find any cached memories matching your question. _Searching your cached memories — reconnect for full AI-powered results._"
+
+      const assistantMsg: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: offlineAnswer,
+        referencedMemories: results.slice(0, 3).map((m) => m.id),
+        sourcesCount: results.length,
+        timestamp: new Date().toISOString(),
+      }
+      addChatMessage(assistantMsg)
+      setChatThinking(false)
+      return
+    }
+
     try {
       // Call the AI search API
       const res = await fetch('/api/ai/search', {
@@ -230,7 +257,7 @@ export function AskAether() {
     } finally {
       setChatThinking(false)
     }
-  }, [addChatMessage, setChatThinking, memoriesForApi])
+  }, [addChatMessage, setChatThinking, memoriesForApi, isOnline, memories])
 
   const handleSend = useCallback(() => {
     processMessage(input)

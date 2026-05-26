@@ -36,6 +36,7 @@ import {
 import { useAetherStore } from '@/store/aether-store'
 import { useToast } from '@/hooks/use-toast'
 import { deleteMemoryById, updateMemoryById } from '@/lib/supabase/data'
+import { useOnlineStatus } from '@/hooks/use-online-status'
 import type { Memory, MemoryType } from '@/components/aether/types'
 
 const typeConfig: Record<MemoryType, { icon: typeof Mic; label: string; color: string }> = {
@@ -130,6 +131,7 @@ function DeleteDialog({
 export function MemoryDetail() {
   const { memories, selectedMemoryId, setSelectedMemoryId, setCurrentView, deleteMemory, updateMemory } = useAetherStore()
   const { toast } = useToast()
+  const isOnline = useOnlineStatus()
 
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
@@ -218,8 +220,9 @@ export function MemoryDetail() {
           await updateMemoryById(memory.id, { content: editContent.trim() })
         } catch {
           // Supabase update failed silently — store is already updated locally
+          // If offline, data.ts handles queueing
         }
-        toast({ title: 'Memory updated!', description: 'Your changes have been saved.' })
+        toast({ title: 'Memory updated!', description: !isOnline ? 'Changes saved locally — will sync when you reconnect.' : 'Your changes have been saved.' })
       }
       setIsEditing(false)
     } else {
@@ -255,7 +258,7 @@ export function MemoryDetail() {
     updateMemory(memory.id, { tags: updatedTags })
     setNewTag('')
     setShowTagInput(false)
-    toast({ title: 'Tag added!', description: `"${tagToAdd}" has been added to this memory.` })
+    toast({ title: 'Tag added!', description: !isOnline ? 'Tag saved locally — will sync when you reconnect.' : `"${tagToAdd}" has been added to this memory.` })
     try {
       await updateMemoryById(memory.id, { tags: updatedTags })
     } catch {

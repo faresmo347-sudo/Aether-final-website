@@ -6,6 +6,8 @@ import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { useAetherStore } from '@/store/aether-store'
 import { createClient } from '@/lib/supabase/client'
 import { getProfile, fetchMemories, fetchCollections } from '@/lib/supabase/data'
+import { initOfflineDB, getCachedMemories, getCachedCollections, getSyncQueueCount } from '@/lib/offline-db'
+import { syncAll, onSyncStatus, onSyncComplete } from '@/lib/sync-engine'
 import AppShell from '@/components/aether/AppShell'
 import Dashboard from '@/components/aether/Dashboard'
 import { MemoryDetail } from '@/components/aether/MemoryDetail'
@@ -1038,6 +1040,10 @@ export default function Home() {
     setMemories,
     setCollections,
     setIsLoadingMemories,
+    setIsSyncing,
+    setPendingSyncCount,
+    setLastSyncedAt,
+    updateMemory,
     authScreen,
     setAuthScreen,
   } = useAetherStore()
@@ -1066,12 +1072,27 @@ export default function Home() {
         setUser(profile)
         setProfile(profile)
       }
-      const [memResult, collections] = await Promise.all([
-        fetchMemories(0),
-        fetchCollections(),
-      ])
-      setMemories(memResult.memories)
-      setCollections(collections)
+      try {
+        const [memResult, collections] = await Promise.all([
+          fetchMemories(0),
+          fetchCollections(),
+        ])
+        setMemories(memResult.memories)
+        setCollections(collections)
+      } catch (err) {
+        // Network error — fall back to cached data from IndexedDB
+        console.warn('Failed to fetch from Supabase, loading from cache:', err)
+        try {
+          const [cachedMems, cachedCols] = await Promise.all([
+            getCachedMemories(),
+            getCachedCollections(),
+          ])
+          if (cachedMems.length > 0) setMemories(cachedMems)
+          if (cachedCols.length > 0) setCollections(cachedCols)
+        } catch {
+          // IndexedDB also failed — nothing we can do
+        }
+      }
     } catch (err) {
       console.error('Failed to load user data:', err)
       // Don't block the user from using the app if data load fails
@@ -1084,6 +1105,27 @@ export default function Home() {
   // Strategy: Call getSession() immediately for fast session restoration,
   // then subscribe to onAuthStateChange for ongoing lifecycle events.
   useEffect(() => {
+    // Initialize offline IndexedDB
+    initOfflineDB().catch((err) => console.warn('Failed to init offline DB:', err))
+
+    // Listen for sync events
+    const unsubStatus = onSyncStatus((status) => {
+      setIsSyncing(status === 'syncing')
+    })
+    const unsubComplete = onSyncComplete((result) => {
+      getSyncQueueCount().then(setPendingSyncCount)
+      if (result.synced > 0) {
+        setLastSyncedAt(new Date().toISOString())
+      }
+    })
+
+    // Listen for memory synced events (temp ID -> real ID replacement)
+    const handleMemorySynced = ((e: CustomEvent) => {
+      const { tempId, realId, memory } = e.detail
+      updateMemory(tempId, { id: realId, syncStatus: 'synced', ...memory })
+    }) as EventListener
+    window.addEventListener('aether:memory-synced', handleMemorySynced)
+
     const supabase = createClient()
     let mounted = true
 
@@ -1146,8 +1188,11 @@ export default function Home() {
     return () => {
       mounted = false
       subscription.unsubscribe()
+      unsubStatus()
+      unsubComplete()
+      window.removeEventListener('aether:memory-synced', handleMemorySynced)
     }
-  }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView, setIsSessionLoading])
+  }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView, setIsSessionLoading, setIsSyncing, setPendingSyncCount, setLastSyncedAt, updateMemory])
 
   // "Enter Aether" on the landing page should go to signup for new users
   const handleEnterApp = useCallback(() => {

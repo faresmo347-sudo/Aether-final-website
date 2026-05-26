@@ -1,5 +1,17 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Memory, Collection, UserProfile } from '@/components/aether/types'
+import {
+  cacheMemories,
+  cacheMemory,
+  getCachedMemories,
+  deleteCachedMemory,
+  updateCachedMemory,
+  cacheCollections,
+  getCachedCollections,
+  addToSyncQueue,
+  getSyncQueueCount,
+} from '@/lib/offline-db'
+import { getIsOnline } from '@/hooks/use-online-status'
 
 const PAGE_SIZE = 20
 
@@ -45,6 +57,17 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
 }
 
 export async function updateProfile(userId: string, updates: { name?: string; avatar_url?: string }) {
+  if (!getIsOnline()) {
+    // Queue for later sync
+    await addToSyncQueue({
+      type: 'update',
+      entityType: 'memory',
+      data: { id: userId, ...updates, entityType: 'profile' },
+      createdAt: new Date().toISOString(),
+    })
+    return
+  }
+
   const supabase = createClient()
   const { error } = await supabase
     .from('profiles')
@@ -57,6 +80,17 @@ export async function updateProfile(userId: string, updates: { name?: string; av
 // ─── MEMORIES ───
 
 export async function fetchMemories(page: number = 0): Promise<{ memories: Memory[]; hasMore: boolean }> {
+  // If offline, return cached memories
+  if (!getIsOnline()) {
+    const cached = await getCachedMemories()
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE
+    return {
+      memories: cached.slice(from, to),
+      hasMore: to < cached.length,
+    }
+  }
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { memories: [], hasMore: false }
@@ -73,11 +107,23 @@ export async function fetchMemories(page: number = 0): Promise<{ memories: Memor
 
   if (error) {
     console.error('Fetch memories error:', error)
-    return { memories: [], hasMore: false }
+    // Fall back to cache
+    const cached = await getCachedMemories()
+    return { memories: cached.slice(from, to), hasMore: to < cached.length }
   }
 
   const memories: Memory[] = (data || []).map(mapMemoryFromDb)
   const hasMore = data?.length === PAGE_SIZE
+
+  // Cache the fresh data
+  if (page === 0 && memories.length > 0) {
+    cacheMemories(memories).catch(() => {})
+  } else {
+    // Append individual memories to cache
+    for (const m of memories) {
+      cacheMemory(m).catch(() => {})
+    }
+  }
 
   return { memories, hasMore }
 }
@@ -93,6 +139,39 @@ export async function createMemory(memory: {
   imagePreview?: string
   collectionId?: string
 }): Promise<Memory> {
+  // If offline, save locally and queue for sync
+  if (!getIsOnline()) {
+    const tempId = `offline-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    const offlineMemory: Memory = {
+      id: tempId,
+      type: memory.type as Memory['type'],
+      title: memory.title,
+      content: memory.content,
+      tags: memory.tags,
+      createdAt: new Date().toISOString(),
+      summary: memory.summary,
+      sourceUrl: memory.sourceUrl,
+      fileUrl: memory.fileUrl,
+      imagePreview: memory.imagePreview,
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    }
+
+    // Cache locally
+    await cacheMemory(offlineMemory)
+
+    // Queue for sync
+    await addToSyncQueue({
+      type: 'create',
+      entityType: 'memory',
+      data: { ...memory, tempId },
+      tempId,
+      createdAt: new Date().toISOString(),
+    })
+
+    return offlineMemory
+  }
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -123,11 +202,15 @@ export async function createMemory(memory: {
     })
   }
 
-  return mapMemoryFromDb(data)
+  const savedMemory = mapMemoryFromDb(data)
+
+  // Cache the saved memory
+  await cacheMemory(savedMemory)
+
+  return savedMemory
 }
 
 export async function updateMemoryById(id: string, updates: { content?: string; tags?: string[]; title?: string }) {
-  const supabase = createClient()
   const dbUpdates: Record<string, any> = {}
   if (updates.content !== undefined) dbUpdates.content = updates.content
   if (updates.tags !== undefined) dbUpdates.tags = updates.tags
@@ -135,6 +218,21 @@ export async function updateMemoryById(id: string, updates: { content?: string; 
 
   if (Object.keys(dbUpdates).length === 0) return
 
+  // Update local cache immediately
+  await updateCachedMemory(id, { ...updates, updatedAt: new Date().toISOString() })
+
+  if (!getIsOnline()) {
+    // Queue for sync later
+    await addToSyncQueue({
+      type: 'update',
+      entityType: 'memory',
+      data: { id, ...dbUpdates, updatedAt: new Date().toISOString() },
+      createdAt: new Date().toISOString(),
+    })
+    return
+  }
+
+  const supabase = createClient()
   const { error } = await supabase
     .from('memories')
     .update(dbUpdates)
@@ -144,6 +242,20 @@ export async function updateMemoryById(id: string, updates: { content?: string; 
 }
 
 export async function deleteMemoryById(id: string) {
+  // Delete from local cache immediately
+  await deleteCachedMemory(id)
+
+  if (!getIsOnline()) {
+    // Queue for sync later
+    await addToSyncQueue({
+      type: 'delete',
+      entityType: 'memory',
+      data: { id },
+      createdAt: new Date().toISOString(),
+    })
+    return
+  }
+
   const supabase = createClient()
   const { error } = await supabase
     .from('memories')
@@ -154,6 +266,12 @@ export async function deleteMemoryById(id: string) {
 }
 
 export async function getMemoryCount(): Promise<number> {
+  if (!getIsOnline()) {
+    // Return cached count
+    const cached = await getCachedMemories()
+    return cached.length
+  }
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return 0
@@ -170,6 +288,10 @@ export async function getMemoryCount(): Promise<number> {
 // ─── COLLECTIONS ───
 
 export async function fetchCollections(): Promise<Collection[]> {
+  if (!getIsOnline()) {
+    return getCachedCollections()
+  }
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -182,7 +304,7 @@ export async function fetchCollections(): Promise<Collection[]> {
 
   if (error) {
     console.error('Fetch collections error:', error)
-    return []
+    return getCachedCollections()
   }
 
   // Get memory counts for each collection
@@ -204,6 +326,9 @@ export async function fetchCollections(): Promise<Collection[]> {
     })
   }
 
+  // Cache the collections
+  await cacheCollections(collections).catch(() => {})
+
   return collections
 }
 
@@ -212,6 +337,27 @@ export async function createCollection(collection: {
   icon: string
   color: string
 }): Promise<Collection> {
+  if (!getIsOnline()) {
+    const tempId = `offline-col-${Date.now()}`
+    const offlineCollection: Collection = {
+      id: tempId,
+      name: collection.name,
+      icon: collection.icon,
+      color: collection.color,
+      memoryCount: 0,
+      lastUpdated: new Date().toISOString().split('T')[0],
+    }
+    await cacheCollections([...(await getCachedCollections()), offlineCollection])
+    await addToSyncQueue({
+      type: 'create',
+      entityType: 'collection',
+      data: { ...collection, tempId },
+      tempId,
+      createdAt: new Date().toISOString(),
+    })
+    return offlineCollection
+  }
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -241,6 +387,17 @@ export async function createCollection(collection: {
 }
 
 export async function addMemoryToCollection(memoryId: string, collectionId: string) {
+  if (!getIsOnline()) {
+    // Queue for later
+    await addToSyncQueue({
+      type: 'update',
+      entityType: 'memory',
+      data: { id: memoryId, collectionId, _op: 'addToCollection' },
+      createdAt: new Date().toISOString(),
+    })
+    return
+  }
+
   const supabase = createClient()
   const { error } = await supabase
     .from('memory_collections')
@@ -250,6 +407,13 @@ export async function addMemoryToCollection(memoryId: string, collectionId: stri
 }
 
 export async function getMemoriesForCollection(collectionId: string): Promise<Memory[]> {
+  if (!getIsOnline()) {
+    const cached = await getCachedMemories()
+    // Can't filter by collection in offline mode without the junction table cached
+    // Return all cached memories — the UI will handle it
+    return cached
+  }
+
   const supabase = createClient()
   const { data, error } = await supabase
     .from('memory_collections')
@@ -266,6 +430,12 @@ export async function getMemoriesForCollection(collectionId: string): Promise<Me
 // ─── EXPORT ───
 
 export async function exportAllMemories(): Promise<string> {
+  if (!getIsOnline()) {
+    // Export from cache
+    const cached = await getCachedMemories()
+    return JSON.stringify(cached, null, 2)
+  }
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -293,12 +463,13 @@ function mapMemoryFromDb(row: any): Memory {
     createdAt: row.created_at,
     source: row.source_url,
     aiSummary: row.summary,
-    imagePreview: row.image_preview,
-    userId: row.user_id,
     summary: row.summary,
     sourceUrl: row.source_url,
     fileUrl: row.file_url,
+    imagePreview: row.image_preview,
+    userId: row.user_id,
     updatedAt: row.updated_at,
+    syncStatus: 'synced',
   }
 }
 
@@ -307,4 +478,14 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
   return name.slice(0, 2).toUpperCase()
+}
+
+// ─── Offline helpers ───
+
+export async function getOfflineMemoryCount(): Promise<number> {
+  return (await getCachedMemories()).length
+}
+
+export async function getOfflineSyncQueueCount(): Promise<number> {
+  return getSyncQueueCount()
 }
