@@ -216,7 +216,7 @@ export function Recaps() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-32 md:pb-8">
         {/* Header */}
         <div className="mb-6">
           <h1
@@ -230,8 +230,8 @@ export function Recaps() {
           </p>
         </div>
 
-        {/* Daily/Weekly Toggle - Full width segmented control */}
-        <div className="flex w-full rounded-full p-1 bg-[#9D8BA7]/10 mb-6">
+        {/* Daily/Weekly Toggle - Full width segmented control on mobile */}
+        <div className="flex w-full rounded-full p-1 bg-[#9D8BA7]/10 mb-6 mx-auto max-w-xs sm:max-w-sm">
           <button
             onClick={() => setRecapView('daily')}
             className={`tap-feedback flex-1 py-2.5 rounded-full text-sm font-medium transition-all min-h-[44px] ${

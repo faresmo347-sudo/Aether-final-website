@@ -1004,12 +1004,33 @@ function AppContent() {
    MAIN PAGE — Routes between Landing, Auth, and App
    ═══════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════
+   LOADING SPLASH — Shown while session is being checked
+   ═══════════════════════════════════════════════════════════════ */
+function LoadingSplash() {
+  return (
+    <div
+      className="fixed inset-0 flex flex-col items-center justify-center"
+      style={{ background: '#FFFAF5' }}
+    >
+      <div className="flex flex-col items-center gap-4">
+        <div className="animate-pulse">
+          <AetherLogo size={64} />
+        </div>
+        <p className="text-sm text-[#1a1a2e]/40 font-medium">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const {
     currentView,
     setCurrentView,
     darkMode,
     isAuthenticated,
+    isSessionLoading,
+    setIsSessionLoading,
     setUser,
     setProfile,
     setMemories,
@@ -1063,9 +1084,12 @@ export default function Home() {
     // Check initial session — load data immediately if already signed in
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
+      setIsSessionLoading(false)
       if (session?.user) {
         await loadUserData(session.user.id)
         setCurrentView('dashboard')
+      } else {
+        setCurrentView('landing')
       }
     }
     checkSession()
@@ -1074,6 +1098,7 @@ export default function Home() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
+          dataLoadedRef.current = false
           await loadUserData(session.user.id)
           setCurrentView('dashboard')
         } else if (event === 'SIGNED_OUT') {
@@ -1090,7 +1115,7 @@ export default function Home() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView])
+  }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView, setIsSessionLoading])
 
   // "Enter Aether" on the landing page should go to signup for new users
   const handleEnterApp = useCallback(() => {
@@ -1111,6 +1136,11 @@ export default function Home() {
   const handleAuthSuccess = useCallback(() => {
     // Auth state change listener will handle data loading and navigation
   }, [])
+
+  // Show loading splash while session is being checked
+  if (isSessionLoading) {
+    return <LoadingSplash />
+  }
 
   // Render auth screens
   if (currentView === 'signup') {

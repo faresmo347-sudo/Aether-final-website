@@ -8,6 +8,8 @@ interface AetherState {
   isAuthenticated: boolean
   authScreen: 'signup' | 'signin' | 'forgot'
   setAuthScreen: (screen: 'signup' | 'signin' | 'forgot') => void
+  isSessionLoading: boolean
+  setIsSessionLoading: (v: boolean) => void
 
   // Navigation
   currentView: AppView
@@ -92,6 +94,8 @@ export const useAetherStore = create<AetherState>((set) => ({
   isAuthenticated: false,
   authScreen: 'signin',
   setAuthScreen: (screen) => set({ authScreen: screen }),
+  isSessionLoading: true,
+  setIsSessionLoading: (v) => set({ isSessionLoading: v }),
 
   // Navigation
   currentView: 'landing',

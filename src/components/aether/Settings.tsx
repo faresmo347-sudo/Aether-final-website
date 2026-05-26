@@ -196,7 +196,7 @@ export function Settings() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="max-w-2xl mx-auto px-0 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-2xl mx-auto px-0 sm:px-6 py-6 sm:py-8 pb-32 md:pb-8">
         {/* Header */}
         <div className="px-4 sm:px-0 mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -505,7 +505,7 @@ export function Settings() {
               Danger Zone
             </h3>
           </div>
-          <div className="px-4 sm:px-0 space-y-2 pb-8">
+          <div className="px-4 sm:px-0 space-y-2 pb-8 pb-safe">
             <button
               onClick={handleExport}
               disabled={isExporting}

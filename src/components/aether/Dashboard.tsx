@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, memo, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles, CheckSquare, Square, Search, ClipboardPaste } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAetherStore } from '@/store/aether-store'
 import { createMemory, getMemoryCount } from '@/lib/supabase/data'
 import type { Memory, MemoryType } from '@/components/aether/types'
@@ -1262,7 +1263,7 @@ function getSmartFallbackTags(content: string, type: string): string[] {
 // ---------- main Dashboard ----------
 
 export default function Dashboard() {
-  const { memories, activeFilter, collectionFilter, setSelectedMemoryId, setCurrentView, collections, searchQuery, setSearchQuery } = useAetherStore()
+  const { memories, activeFilter, collectionFilter, setSelectedMemoryId, setCurrentView, collections, searchQuery, setSearchQuery, isLoadingMemories } = useAetherStore()
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set())
 
   const activeCollection = useMemo(
@@ -1415,7 +1416,29 @@ export default function Dashboard() {
 
       {/* Memory Feed — iOS-style scroll, mobile gap */}
       <div className="flex-1 overflow-y-auto min-h-0 ios-scroll">
-        {sortedMemories.length > 0 ? (
+        {isLoadingMemories ? (
+          <div className="flex flex-col gap-3 pb-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-2xl p-4 shadow-sm border border-border">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="size-9 rounded-xl shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex gap-1.5">
+                        <Skeleton className="h-4 w-12 rounded-full" />
+                        <Skeleton className="h-4 w-12 rounded-full" />
+                      </div>
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : sortedMemories.length > 0 ? (
           <div className="flex flex-col gap-3 pb-4">
             {sortedMemories.map((memory) => (
               <MemoryCard

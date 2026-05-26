@@ -131,7 +131,7 @@ export function Collections() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-28 md:pb-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-32 md:pb-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -162,7 +162,7 @@ export function Collections() {
             Save memories and assign them to collections to see them organized here
           </p>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-10 px-0 sm:px-0">
           {collections.map((collection, index) => (
             <motion.div
               key={collection.id}

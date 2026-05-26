@@ -329,7 +329,7 @@ export function AskAether() {
       </div>
 
       {/* Input Bar — fixed above bottom nav on mobile, sticky on desktop */}
-      <div className="fixed bottom-16 left-0 right-0 md:static z-30 bg-card/95 backdrop-blur-sm border-t border-border pb-safe md:bg-card/80">
+      <div className="fixed bottom-16 left-0 right-0 md:static z-30 bg-card/95 backdrop-blur-sm border-t border-border md:bg-card/80" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="md:max-w-3xl md:mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex-1 relative">
@@ -345,7 +345,7 @@ export function AskAether() {
                 }}
                 placeholder="Ask Aether anything..."
                 disabled={isChatThinking}
-                className="w-full bg-background rounded-2xl border border-border px-4 sm:px-5 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all duration-300 disabled:opacity-50 shadow-sm min-h-[48px]"
+                className="w-full bg-background rounded-2xl border border-border px-4 sm:px-5 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all duration-300 disabled:opacity-50 shadow-sm min-h-[48px] resize-none"
               />
               {/* Microphone button inside input */}
               <button
@@ -371,8 +371,8 @@ export function AskAether() {
         </div>
       </div>
 
-      {/* Spacer on mobile so content doesn't hide behind the fixed input bar */}
-      <div className="md:hidden h-20 flex-shrink-0" />
+      {/* Spacer on mobile so content doesn't hide behind the fixed input bar + bottom nav */}
+      <div className="md:hidden h-32 flex-shrink-0" />
     </div>
   )
 }
