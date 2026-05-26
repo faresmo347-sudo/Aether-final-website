@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion'
 import {
   Brain,
@@ -113,16 +113,30 @@ function AnimatedBackground() {
   )
 }
 
+/* ─────────── Seeded PRNG for SSR-safe randomness ─────────── */
+function seededRandom(seed: number) {
+  let s = seed
+  return () => {
+    s = (s * 16807 + 0) % 2147483647
+    return (s - 1) / 2147483646
+  }
+}
+
 /* ─────────── Floating Particles ─────────── */
 function FloatingParticles() {
-  const particles = Array.from({ length: 30 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 3 + 1,
-    duration: Math.random() * 20 + 15,
-    delay: Math.random() * 10,
-  }))
+  const rand = useMemo(() => seededRandom(42), [])
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 30 }, (_, i) => ({
+        id: i,
+        x: rand() * 100,
+        y: rand() * 100,
+        size: rand() * 3 + 1,
+        duration: rand() * 20 + 15,
+        delay: rand() * 10,
+      })),
+    [rand]
+  )
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
