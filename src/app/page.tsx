@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { Menu, X } from 'lucide-react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { useAetherStore } from '@/store/aether-store'
 import { createClient } from '@/lib/supabase/client'
@@ -22,6 +23,10 @@ function AnimatedBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
+    // Skip canvas animation if user prefers reduced motion
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion) return
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -30,6 +35,8 @@ function AnimatedBackground() {
     let animationId: number
     let time = 0
 
+    const isMobile = window.innerWidth < 768
+
     const resize = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
@@ -37,13 +44,20 @@ function AnimatedBackground() {
     resize()
     window.addEventListener('resize', resize)
 
-    const orbs = [
-      { x: 0.2, y: 0.3, r: 300, color: 'rgba(157, 139, 167, 0.08)', speed: 0.0003, phase: 0 },
-      { x: 0.8, y: 0.6, r: 250, color: 'rgba(224, 242, 241, 0.15)', speed: 0.0004, phase: 1.5 },
-      { x: 0.5, y: 0.8, r: 350, color: 'rgba(157, 139, 167, 0.05)', speed: 0.0002, phase: 3 },
-      { x: 0.3, y: 0.7, r: 200, color: 'rgba(224, 242, 241, 0.1)', speed: 0.0005, phase: 4.5 },
-      { x: 0.7, y: 0.2, r: 280, color: 'rgba(184, 168, 196, 0.06)', speed: 0.00035, phase: 2 },
-    ]
+    // Use fewer, smaller orbs on mobile for performance
+    const orbs = isMobile
+      ? [
+          { x: 0.2, y: 0.3, r: 200, color: 'rgba(157, 139, 167, 0.06)', speed: 0.0003, phase: 0 },
+          { x: 0.8, y: 0.6, r: 180, color: 'rgba(224, 242, 241, 0.1)', speed: 0.0004, phase: 1.5 },
+          { x: 0.5, y: 0.8, r: 220, color: 'rgba(157, 139, 167, 0.04)', speed: 0.0002, phase: 3 },
+        ]
+      : [
+          { x: 0.2, y: 0.3, r: 300, color: 'rgba(157, 139, 167, 0.08)', speed: 0.0003, phase: 0 },
+          { x: 0.8, y: 0.6, r: 250, color: 'rgba(224, 242, 241, 0.15)', speed: 0.0004, phase: 1.5 },
+          { x: 0.5, y: 0.8, r: 350, color: 'rgba(157, 139, 167, 0.05)', speed: 0.0002, phase: 3 },
+          { x: 0.3, y: 0.7, r: 200, color: 'rgba(224, 242, 241, 0.1)', speed: 0.0005, phase: 4.5 },
+          { x: 0.7, y: 0.2, r: 280, color: 'rgba(184, 168, 196, 0.06)', speed: 0.00035, phase: 2 },
+        ]
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -97,7 +111,10 @@ function seededRandom(seed: number) {
 function FloatingParticles() {
   const particles = useMemo(() => {
     const rand = seededRandom(42)
-    return Array.from({ length: 30 }, (_, i) => ({
+    // Use fewer particles on mobile for performance
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    const count = isMobile ? 15 : 30
+    return Array.from({ length: count }, (_, i) => ({
       id: i,
       x: rand() * 100,
       y: rand() * 100,
@@ -145,12 +162,28 @@ function FloatingParticles() {
 
 function Navbar({ onEnterApp }: { onEnterApp: () => void }) {
   const [scrolled, setScrolled] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', onScroll)
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 768) setMobileMenuOpen(false)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const navLinks = [
+    { href: '#features', label: 'Features' },
+    { href: '#how-it-works', label: 'How It Works' },
+    { href: '#pricing', label: 'Pricing' },
+  ]
 
   return (
     <motion.nav
@@ -163,7 +196,7 @@ function Navbar({ onEnterApp }: { onEnterApp: () => void }) {
           : 'bg-transparent'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center shadow-lg shadow-[#9D8BA7]/20 overflow-hidden">
@@ -178,19 +211,57 @@ function Navbar({ onEnterApp }: { onEnterApp: () => void }) {
 
         {/* Nav Links (Desktop) */}
         <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm text-[#1a1a2e]/60 hover:text-[#9D8BA7] transition-colors">Features</a>
-          <a href="#how-it-works" className="text-sm text-[#1a1a2e]/60 hover:text-[#9D8BA7] transition-colors">How It Works</a>
-          <a href="#pricing" className="text-sm text-[#1a1a2e]/60 hover:text-[#9D8BA7] transition-colors">Pricing</a>
+          {navLinks.map((link) => (
+            <a key={link.href} href={link.href} className="text-sm text-[#1a1a2e]/60 hover:text-[#9D8BA7] transition-colors">{link.label}</a>
+          ))}
         </div>
 
-        {/* CTA */}
-        <button
-          onClick={onEnterApp}
-          className="bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-full px-5 py-2 text-sm font-medium shadow-lg shadow-[#9D8BA7]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#9D8BA7]/30"
-        >
-          Enter Aether
-        </button>
+        {/* Right side: CTA + Hamburger */}
+        <div className="flex items-center gap-3">
+          {/* CTA — always visible */}
+          <button
+            onClick={onEnterApp}
+            className="bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-full px-4 sm:px-5 py-2 text-sm font-medium shadow-lg shadow-[#9D8BA7]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#9D8BA7]/30"
+          >
+            Enter Aether
+          </button>
+
+          {/* Hamburger — mobile only */}
+          <button
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            className="md:hidden h-10 w-10 rounded-xl flex items-center justify-center text-[#1a1a2e]/70 hover:bg-[#1a1a2e]/5 transition-colors"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile menu slide-down */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="md:hidden overflow-hidden border-t border-[#1a1a2e]/5 bg-[#FFFAF5]/95 backdrop-blur-xl"
+          >
+            <div className="px-4 py-4 space-y-1">
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-3 rounded-xl text-base text-[#1a1a2e]/70 hover:text-[#9D8BA7] hover:bg-[#9D8BA7]/5 transition-colors min-h-[44px] flex items-center"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   )
 }
@@ -206,7 +277,7 @@ function HeroSection({ onEnterApp }: { onEnterApp: () => void }) {
 
   return (
     <motion.section style={{ y, opacity }} className="relative min-h-screen flex items-center justify-center pt-16">
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 text-center">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -223,7 +294,7 @@ function HeroSection({ onEnterApp }: { onEnterApp: () => void }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.8 }}
-          className="font-serif text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-[#1a1a2e] leading-[1.05] tracking-tight mb-6"
+          className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[#1a1a2e] leading-[1.05] tracking-tight mb-6"
         >
           Forget{' '}
           <span className="bg-gradient-to-r from-[#9D8BA7] via-[#B8A8C4] to-[#9D8BA7] bg-clip-text text-transparent animate-gradient">
@@ -237,7 +308,7 @@ function HeroSection({ onEnterApp }: { onEnterApp: () => void }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.6 }}
-          className="text-lg sm:text-xl md:text-2xl text-[#1a1a2e]/50 max-w-2xl mx-auto mb-10 leading-relaxed"
+          className="text-base sm:text-lg md:text-xl text-[#1a1a2e]/50 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed"
         >
           Aether remembers everything — so you don&apos;t have to. Capture ideas, voice notes, links, and more. 
           Retrieve any memory instantly with natural language AI search.
@@ -252,7 +323,7 @@ function HeroSection({ onEnterApp }: { onEnterApp: () => void }) {
         >
           <button
             onClick={onEnterApp}
-            className="inline-flex items-center gap-2 bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-full px-8 py-4 text-base font-medium shadow-xl shadow-[#9D8BA7]/25 transition-all duration-300 hover:shadow-2xl hover:shadow-[#9D8BA7]/35 hover:-translate-y-1"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-full px-8 py-4 text-base font-medium shadow-xl shadow-[#9D8BA7]/25 transition-all duration-300 hover:shadow-2xl hover:shadow-[#9D8BA7]/35 hover:-translate-y-1"
           >
             Enter Aether
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -271,13 +342,13 @@ function HeroSection({ onEnterApp }: { onEnterApp: () => void }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.8 }}
-          className="mt-12 flex items-center justify-center gap-6 text-sm text-[#1a1a2e]/30"
+          className="mt-10 sm:mt-12 flex items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-[#1a1a2e]/30"
         >
-          <div className="flex -space-x-2">
+          <div className="hidden xs:flex -space-x-2">
             {['A', 'S', 'M', 'J'].map((initial, i) => (
               <div
                 key={i}
-                className="h-8 w-8 rounded-full border-2 border-[#FFFAF5] flex items-center justify-center text-xs font-semibold text-white"
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 border-[#FFFAF5] flex items-center justify-center text-[10px] sm:text-xs font-semibold text-white"
                 style={{ backgroundColor: ['#9D8BA7', '#B8A8C4', '#7A6B85', '#6D597A'][i] }}
               >
                 {initial}
@@ -343,26 +414,26 @@ const features = [
 function FeaturesSection() {
   return (
     <section id="features" className="relative py-24 sm:py-32">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12 sm:mb-16"
         >
           <span className="inline-block text-xs font-semibold text-[#9D8BA7] uppercase tracking-widest mb-3">Features</span>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#1a1a2e] mb-4">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a1a2e] mb-4">
             Everything your brain needs
           </h2>
-          <p className="text-[#1a1a2e]/50 text-lg max-w-2xl mx-auto">
+          <p className="text-[#1a1a2e]/50 text-base sm:text-lg max-w-2xl mx-auto">
             Capture, connect, and retrieve — Aether handles the rest.
           </p>
         </motion.div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {features.map((feature, i) => (
             <motion.div
               key={feature.title}
@@ -370,7 +441,7 @@ function FeaturesSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ delay: i * 0.1, duration: 0.5 }}
-              className="group bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-[#1a1a2e]/5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              className="group bg-white/60 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-[#1a1a2e]/5 shadow-sm hover:shadow-lg md:hover:-translate-y-1 transition-all duration-300"
             >
               <div className="h-12 w-12 rounded-xl bg-[#9D8BA7]/10 flex items-center justify-center text-[#9D8BA7] mb-4 group-hover:bg-[#9D8BA7]/15 group-hover:scale-110 transition-all duration-300">
                 {feature.icon}
@@ -425,17 +496,17 @@ const stepIconMap: Record<string, React.ReactNode> = {
 function HowItWorksSection() {
   return (
     <section id="how-it-works" className="relative py-24 sm:py-32 bg-white/40">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12 sm:mb-16"
         >
           <span className="inline-block text-xs font-semibold text-[#9D8BA7] uppercase tracking-widest mb-3">How It Works</span>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#1a1a2e] mb-4">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-[#1a1a2e] mb-4">
             Three steps to a perfect memory
           </h2>
         </motion.div>
@@ -507,19 +578,19 @@ function AiChatDemo() {
 
   return (
     <section className="relative py-24 sm:py-32">
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-10 sm:mb-12"
         >
           <span className="inline-block text-xs font-semibold text-[#9D8BA7] uppercase tracking-widest mb-3">Ask Aether</span>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#1a1a2e] mb-4">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a1a2e] mb-4">
             Your memories, one question away
           </h2>
-          <p className="text-[#1a1a2e]/50 text-lg max-w-2xl mx-auto">
+          <p className="text-[#1a1a2e]/50 text-base sm:text-lg max-w-2xl mx-auto">
             Ask in natural language and Aether retrieves the right memory instantly.
           </p>
         </motion.div>
@@ -530,10 +601,10 @@ function AiChatDemo() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="bg-white rounded-3xl shadow-2xl shadow-[#9D8BA7]/10 border border-[#1a1a2e]/5 overflow-hidden max-w-2xl mx-auto"
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-[#9D8BA7]/10 border border-[#1a1a2e]/5 overflow-hidden max-w-2xl mx-2 sm:mx-auto"
         >
           {/* Window header */}
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-[#1a1a2e]/5 bg-[#FFFAF5]">
+          <div className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-[#1a1a2e]/5 bg-[#FFFAF5]">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#9D8BA7] to-[#6D597A] flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
             </div>
@@ -548,7 +619,7 @@ function AiChatDemo() {
           </div>
 
           {/* Chat messages area */}
-          <div className="p-6 min-h-[280px] max-h-[400px] overflow-y-auto space-y-4">
+          <div className="p-4 sm:p-6 min-h-[240px] sm:min-h-[280px] max-h-[400px] overflow-y-auto space-y-4">
             {messages.length === 0 && !isTyping && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <p className="text-[#1a1a2e]/30 text-sm mb-4">Click to see Aether in action</p>
@@ -600,14 +671,14 @@ function AiChatDemo() {
           </div>
 
           {/* Input bar */}
-          <div className="px-6 py-4 border-t border-[#1a1a2e]/5 bg-white/50">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-[#1a1a2e]/5 bg-white/50">
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ask Aether anything..."
-                className="flex-1 bg-[#FFFAF5] border border-[#1a1a2e]/5 rounded-full px-4 py-2.5 text-sm text-[#1a1a2e] placeholder:text-[#1a1a2e]/30 focus:outline-none focus:border-[#9D8BA7]/30 transition-colors"
+                className="flex-1 bg-[#FFFAF5] border border-[#1a1a2e]/5 rounded-full px-4 py-2.5 sm:py-3 text-sm text-[#1a1a2e] placeholder:text-[#1a1a2e]/30 focus:outline-none focus:border-[#9D8BA7]/30 transition-colors min-h-[44px]"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleDemoClick()
                 }}
@@ -654,21 +725,21 @@ const testimonials = [
 function TestimonialsSection() {
   return (
     <section className="relative py-24 sm:py-32 bg-white/40">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12 sm:mb-16"
         >
           <span className="inline-block text-xs font-semibold text-[#9D8BA7] uppercase tracking-widest mb-3">Testimonials</span>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#1a1a2e] mb-4">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a1a2e] mb-4">
             People love their second brain
           </h2>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {testimonials.map((t, i) => (
             <motion.div
               key={t.author}
@@ -676,7 +747,7 @@ function TestimonialsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ delay: i * 0.15, duration: 0.5 }}
-              className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-[#1a1a2e]/5 shadow-sm hover:shadow-md transition-shadow duration-300"
+              className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-[#1a1a2e]/5 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
               {/* Stars */}
               <div className="flex gap-1 mb-4">
@@ -713,31 +784,31 @@ function TestimonialsSection() {
 function PricingSection({ onEnterApp }: { onEnterApp: () => void }) {
   return (
     <section id="pricing" className="relative py-24 sm:py-32">
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12 sm:mb-16"
         >
           <span className="inline-block text-xs font-semibold text-[#9D8BA7] uppercase tracking-widest mb-3">Pricing</span>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#1a1a2e] mb-4">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a1a2e] mb-4">
             Start free, grow forever
           </h2>
-          <p className="text-[#1a1a2e]/50 text-lg max-w-2xl mx-auto">
+          <p className="text-[#1a1a2e]/50 text-base sm:text-lg max-w-2xl mx-auto">
             No credit card required. Upgrade when you&apos;re ready.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto">
           {/* Seed Plan */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-50px' }}
             transition={{ duration: 0.5 }}
-            className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 border border-[#1a1a2e]/5 shadow-sm"
+            className="bg-white/70 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-[#1a1a2e]/5 shadow-sm"
           >
             <div className="mb-6">
               <h3 className="font-serif text-2xl font-bold text-[#1a1a2e] mb-1">Seed</h3>
@@ -769,7 +840,7 @@ function PricingSection({ onEnterApp }: { onEnterApp: () => void }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-50px' }}
             transition={{ delay: 0.15, duration: 0.5 }}
-            className="relative bg-gradient-to-br from-[#9D8BA7]/10 to-[#9D8BA7]/5 rounded-3xl p-8 border-2 border-[#9D8BA7]/20 shadow-xl shadow-[#9D8BA7]/10"
+            className="relative bg-gradient-to-br from-[#9D8BA7]/10 to-[#9D8BA7]/5 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border-2 border-[#9D8BA7]/20 shadow-xl shadow-[#9D8BA7]/10"
           >
             {/* Popular badge */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#9D8BA7] text-white text-xs font-semibold px-4 py-1 rounded-full shadow-lg shadow-[#9D8BA7]/30">
@@ -812,23 +883,23 @@ function PricingSection({ onEnterApp }: { onEnterApp: () => void }) {
 function CtaSection({ onEnterApp }: { onEnterApp: () => void }) {
   return (
     <section className="relative py-24 sm:py-32">
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6 }}
-          className="text-center bg-gradient-to-br from-[#9D8BA7]/10 via-[#9D8BA7]/5 to-[#E0F2F1]/20 rounded-3xl p-12 sm:p-16 border border-[#9D8BA7]/10"
+          className="text-center bg-gradient-to-br from-[#9D8BA7]/10 via-[#9D8BA7]/5 to-[#E0F2F1]/20 rounded-2xl sm:rounded-3xl p-8 sm:p-12 md:p-16 border border-[#9D8BA7]/10"
         >
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#1a1a2e] mb-4">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a1a2e] mb-4">
             Ready to never forget again?
           </h2>
-          <p className="text-[#1a1a2e]/50 text-lg max-w-xl mx-auto mb-8">
+          <p className="text-[#1a1a2e]/50 text-base sm:text-lg max-w-xl mx-auto mb-6 sm:mb-8">
             Join thousands of thinkers who trust Aether as their second brain.
           </p>
           <button
             onClick={onEnterApp}
-            className="inline-flex items-center gap-2 bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-full px-10 py-4 text-lg font-medium shadow-xl shadow-[#9D8BA7]/25 transition-all duration-300 hover:shadow-2xl hover:shadow-[#9D8BA7]/35 hover:-translate-y-1"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-full px-10 py-4 text-lg font-medium shadow-xl shadow-[#9D8BA7]/25 transition-all duration-300 hover:shadow-2xl hover:shadow-[#9D8BA7]/35 hover:-translate-y-1"
           >
             Enter Aether
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -846,7 +917,7 @@ function CtaSection({ onEnterApp }: { onEnterApp: () => void }) {
 function Footer() {
   return (
     <footer className="border-t border-[#1a1a2e]/5 bg-white/30">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center overflow-hidden">

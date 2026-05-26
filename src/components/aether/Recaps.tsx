@@ -95,8 +95,6 @@ export function Recaps() {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     const counts = [0, 0, 0, 0, 0, 0, 0]
     const now = new Date()
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - now.getDay() + 1) // Monday
     for (const mem of memories) {
       const memDate = new Date(mem.createdAt)
       const diffDays = Math.floor((now.getTime() - memDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -203,48 +201,57 @@ export function Recaps() {
   const isDailyEmpty = recentMemories.length === 0 && displayTasks.length === 0
   const isWeeklyEmpty = totalWeekMemories === 0 && topThemes.length === 0
 
+  // Memory lane items - create a few cards from older memories
+  const memoryLaneItems = useMemo(() => {
+    if (memories.length === 0) return []
+    // Take up to 5 older memories for the lane
+    return memories.slice(Math.max(0, memories.length - 5)).reverse().map((mem) => ({
+      id: mem.id,
+      title: mem.title,
+      content: mem.content,
+      date: new Date(mem.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      type: mem.type,
+    }))
+  }, [memories])
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1
-              className="text-2xl sm:text-3xl font-bold text-foreground"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
-              Recaps
-            </h1>
-            <p className="text-sm mt-1 text-muted-foreground">
-              Your memory at a glance
-            </p>
-          </div>
-
-          {/* Toggle */}
-          <div
-            className="flex rounded-full p-1 bg-[#9D8BA7]/10"
+        <div className="mb-6">
+          <h1
+            className="text-2xl sm:text-3xl font-bold text-foreground"
+            style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            <button
-              onClick={() => setRecapView('daily')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                recapView === 'daily'
-                  ? 'shadow-sm bg-[#9D8BA7] text-white'
-                  : 'text-foreground'
-              }`}
-            >
-              Daily
-            </button>
-            <button
-              onClick={() => setRecapView('weekly')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                recapView === 'weekly'
-                  ? 'shadow-sm bg-[#9D8BA7] text-white'
-                  : 'text-foreground'
-              }`}
-            >
-              Weekly
-            </button>
-          </div>
+            Recaps
+          </h1>
+          <p className="text-sm mt-1 text-muted-foreground">
+            Your memory at a glance
+          </p>
+        </div>
+
+        {/* Daily/Weekly Toggle - Full width segmented control */}
+        <div className="flex w-full rounded-full p-1 bg-[#9D8BA7]/10 mb-6">
+          <button
+            onClick={() => setRecapView('daily')}
+            className={`tap-feedback flex-1 py-2.5 rounded-full text-sm font-medium transition-all min-h-[44px] ${
+              recapView === 'daily'
+                ? 'shadow-sm bg-[#9D8BA7] text-white'
+                : 'text-foreground active:bg-muted/50'
+            }`}
+          >
+            Daily
+          </button>
+          <button
+            onClick={() => setRecapView('weekly')}
+            className={`tap-feedback flex-1 py-2.5 rounded-full text-sm font-medium transition-all min-h-[44px] ${
+              recapView === 'weekly'
+                ? 'shadow-sm bg-[#9D8BA7] text-white'
+                : 'text-foreground active:bg-muted/50'
+            }`}
+          >
+            Weekly
+          </button>
         </div>
 
         {recapView === 'daily' ? (
@@ -253,10 +260,10 @@ export function Recaps() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-5"
           >
             {/* Today's Brief Card */}
-            <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+            <div className="bg-card rounded-2xl px-4 sm:px-6 py-5 shadow-sm border border-border">
               <div className="flex items-center gap-3 mb-1">
                 <Calendar className="size-5" style={{ color: '#9D8BA7' }} />
                 <h2
@@ -293,7 +300,7 @@ export function Recaps() {
                 </p>
                 <Button
                   onClick={handleCaptureMemory}
-                  className="gap-2 bg-[#9D8BA7] hover:bg-[#9D8BA7]/90 text-white"
+                  className="gap-2 w-full sm:w-auto min-h-[44px] bg-[#9D8BA7] hover:bg-[#9D8BA7]/90 text-white"
                 >
                   <Plus className="size-4" />
                   Capture Memory
@@ -305,7 +312,7 @@ export function Recaps() {
                 {recentMemories.length > 0 && (
                   <div>
                     <h3
-                      className="text-lg font-bold mb-3 text-foreground"
+                      className="text-base sm:text-lg font-bold mb-3 text-foreground"
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
                       Key Memories
@@ -317,7 +324,7 @@ export function Recaps() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.08, duration: 0.25 }}
-                          className="bg-card rounded-2xl p-4 shadow-sm border border-border"
+                          className="bg-card rounded-2xl px-4 sm:px-5 py-4 shadow-sm border border-border"
                         >
                           <div className="flex items-start gap-3">
                             <div
@@ -348,12 +355,12 @@ export function Recaps() {
                 {displayTasks.length > 0 && (
                   <div>
                     <h3
-                      className="text-lg font-bold mb-3 text-foreground"
+                      className="text-base sm:text-lg font-bold mb-3 text-foreground"
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
                       Tasks Extracted
                     </h3>
-                    <div className="bg-card rounded-2xl p-5 shadow-sm border border-border space-y-3">
+                    <div className="bg-card rounded-2xl px-4 sm:px-6 py-5 shadow-sm border border-border space-y-3">
                       {displayTasks.map((task, index) => (
                         <motion.div
                           key={task.id}
@@ -385,7 +392,7 @@ export function Recaps() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.3 }}
-                  className="bg-card rounded-2xl p-5 shadow-sm border-l-4"
+                  className="bg-card rounded-2xl px-4 sm:px-6 py-5 shadow-sm border-l-4"
                   style={{ borderLeftColor: '#9D8BA7' }}
                 >
                   <div className="flex items-start gap-3">
@@ -416,7 +423,7 @@ export function Recaps() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-5"
           >
             {/* Empty state for weekly view */}
             {isWeeklyEmpty ? (
@@ -440,7 +447,7 @@ export function Recaps() {
                 </p>
                 <Button
                   onClick={handleCaptureMemory}
-                  className="gap-2 bg-[#9D8BA7] hover:bg-[#9D8BA7]/90 text-white"
+                  className="gap-2 w-full sm:w-auto min-h-[44px] bg-[#9D8BA7] hover:bg-[#9D8BA7]/90 text-white"
                 >
                   <Plus className="size-4" />
                   Capture Memory
@@ -449,35 +456,35 @@ export function Recaps() {
             ) : (
               <>
                 {/* Week Overview Timeline */}
-                <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+                <div className="bg-card rounded-2xl px-4 sm:px-6 py-5 shadow-sm border border-border">
                   <h2
-                    className="text-lg font-bold mb-4 text-foreground"
+                    className="text-base sm:text-lg font-bold mb-4 text-foreground"
                     style={{ fontFamily: "'Playfair Display', serif" }}
                   >
                     Week Overview
                   </h2>
-                  <div className="flex items-end justify-between gap-2 sm:gap-4">
+                  <div className="flex items-end justify-between gap-1 sm:gap-4">
                     {weekDays.map((d) => (
-                      <div key={d.day} className="flex flex-col items-center gap-2 flex-1">
+                      <div key={d.day} className="flex flex-col items-center gap-1.5 sm:gap-2 flex-1">
                         <span
-                          className={`text-xs font-medium ${d.isHighlight ? 'text-[#9D8BA7]' : 'text-muted-foreground'}`}
+                          className={`text-[10px] sm:text-xs font-medium ${d.isHighlight ? 'text-[#9D8BA7]' : 'text-muted-foreground'}`}
                         >
                           {d.memories}
                         </span>
                         <motion.div
                           initial={{ height: 0 }}
-                          animate={{ height: `${Math.max((d.activity / maxActivity) * 80, 4)}px` }}
+                          animate={{ height: `${Math.max((d.activity / maxActivity) * 56, 4)}px` }}
                           transition={{ duration: 0.5, delay: 0.1 }}
-                          className="w-full rounded-t-lg"
+                          className="w-full rounded-t-lg sm:rounded-t-md"
                           style={{
                             backgroundColor: d.isHighlight
                               ? '#9D8BA7'
                               : 'rgba(157, 139, 167, 0.2)',
-                            maxWidth: 40,
+                            maxWidth: 32,
                           }}
                         />
                         <span
-                          className={`text-xs font-medium ${d.isHighlight ? 'font-bold text-[#9D8BA7]' : 'text-muted-foreground'}`}
+                          className={`text-[10px] sm:text-xs font-medium ${d.isHighlight ? 'font-bold text-[#9D8BA7]' : 'text-muted-foreground'}`}
                         >
                           {d.day}
                         </span>
@@ -490,7 +497,7 @@ export function Recaps() {
                 {topThemes.length > 0 && (
                   <div>
                     <h3
-                      className="text-lg font-bold mb-3 text-foreground"
+                      className="text-base sm:text-lg font-bold mb-3 text-foreground"
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
                       Top Themes
@@ -499,7 +506,7 @@ export function Recaps() {
                       {topThemes.map((theme) => (
                         <span
                           key={theme.name}
-                          className="px-3 py-1.5 rounded-full text-sm font-medium bg-[#9D8BA7]/10 text-foreground"
+                          className="px-3 py-1.5 rounded-full text-sm font-medium min-h-[36px] flex items-center bg-[#9D8BA7]/10 text-foreground"
                         >
                           {theme.name}
                           <span className="ml-1 opacity-50">({theme.count})</span>
@@ -514,7 +521,7 @@ export function Recaps() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15, duration: 0.3 }}
-                  className="bg-card rounded-2xl p-5 shadow-sm border border-border"
+                  className="bg-card rounded-2xl px-4 sm:px-6 py-5 shadow-sm border border-border"
                 >
                   <div className="flex items-start gap-3">
                     <div
@@ -538,42 +545,45 @@ export function Recaps() {
                   </div>
                 </motion.div>
 
-                {/* Memory Lane */}
-                <div>
-                  <h3
-                    className="text-lg font-bold mb-3 text-foreground"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                  >
-                    <Sparkles className="inline size-5 mr-1.5 -mt-0.5" style={{ color: '#9D8BA7' }} />
-                    Memory Lane
-                  </h3>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25, duration: 0.3 }}
-                    className="bg-card rounded-2xl p-5 shadow-sm border border-border"
-                  >
-                    <p className="text-xs mb-2 font-medium" style={{ color: '#9D8BA7' }}>
-                      One month ago today...
-                    </p>
-                    <h4
-                      className="font-bold text-sm mb-1 text-foreground"
+                {/* Memory Lane - Horizontally scrollable */}
+                {memoryLaneItems.length > 0 && (
+                  <div>
+                    <h3
+                      className="text-base sm:text-lg font-bold mb-3 text-foreground"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
                     >
-                      {nostalgicMemory.title}
-                    </h4>
-                    <p
-                      className="text-sm leading-relaxed text-muted-foreground"
-                    >
-                      {nostalgicMemory.content}
-                    </p>
-                    <p
-                      className="text-xs mt-2 flex items-center gap-1 text-muted-foreground"
-                    >
-                      <Clock className="size-3" />
-                      {nostalgicMemory.date}
-                    </p>
-                  </motion.div>
-                </div>
+                      <Sparkles className="inline size-5 mr-1.5 -mt-0.5" style={{ color: '#9D8BA7' }} />
+                      Memory Lane
+                    </h3>
+                    <div className="overflow-x-auto scrollbar-none">
+                      <div className="flex gap-3 pb-2">
+                        {memoryLaneItems.map((item, index) => (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1, duration: 0.3 }}
+                            className="bg-card rounded-2xl p-5 shadow-sm border border-border min-w-[280px] flex-shrink-0"
+                          >
+                            <p className="text-xs mb-2 font-medium" style={{ color: '#9D8BA7' }}>
+                              {index === 0 ? 'One month ago today...' : `${item.date}`}
+                            </p>
+                            <h4 className="font-bold text-sm mb-1 text-foreground">
+                              {item.title}
+                            </h4>
+                            <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3">
+                              {item.content}
+                            </p>
+                            <p className="text-xs mt-2 flex items-center gap-1 text-muted-foreground">
+                              <Clock className="size-3" />
+                              {item.date}
+                            </p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </motion.div>

@@ -133,7 +133,7 @@
   }
 }
 
-/* Custom scrollbar styling */
+/* ─────────── Custom Scrollbar ─────────── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -151,12 +151,62 @@
   background: #9D8BA780;
 }
 
-/* Smooth scrolling */
+/* ─────────── Smooth Scrolling ─────────── */
 html {
   scroll-behavior: smooth;
 }
 
-/* Animation keyframes for the floating orbs */
+/* ─────────── Safe Area Support (iOS) ─────────── */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ─────────── Hide Scrollbar but Keep Scroll ─────────── */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─────────── GPU-Accelerated Animations on Mobile ─────────── */
+@media (max-width: 768px) {
+  .mobile-gpu {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+  }
+}
+
+/* ─────────── Touch Feedback ─────────── */
+.tap-feedback {
+  transition: transform 0.1s ease;
+}
+.tap-feedback:active {
+  transform: scale(0.97);
+}
+
+/* ─────────── Reduced Blur on Mobile for Performance ─────────── */
+@media (max-width: 768px) {
+  .backdrop-blur-xl {
+    backdrop-filter: blur(8px) !important;
+  }
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px) !important;
+  }
+}
+
+/* ─────────── Smooth Momentum Scrolling on iOS ─────────── */
+.ios-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* ─────────── Animation Keyframes ─────────── */
 @keyframes float {
   0%, 100% {
     transform: translateY(0px) scale(1);

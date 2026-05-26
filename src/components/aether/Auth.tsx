@@ -65,7 +65,7 @@ function AuthBackground() {
       />
       {/* Tertiary small lavender orb */}
       <div
-        className="absolute animate-float-slow"
+        className="absolute animate-float-slow hidden sm:block"
         style={{
           width: '300px',
           height: '300px',
@@ -78,7 +78,7 @@ function AuthBackground() {
       />
       {/* Subtle accent orb */}
       <div
-        className="absolute animate-pulse-glow"
+        className="absolute animate-pulse-glow hidden sm:block"
         style={{
           width: '200px',
           height: '200px',
@@ -160,10 +160,10 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
 
   if (confirmationSent) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center p-4">
+      <div className="relative min-h-[100dvh] flex items-center justify-center overflow-y-auto py-4 pb-8">
         <AuthBackground />
-        <div className="relative z-10 w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10 text-center">
+        <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto">
+          <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 md:p-10 text-center">
             <div className="flex flex-col items-center gap-4">
               <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
                 <Check size={28} className="text-green-500" />
@@ -192,10 +192,10 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4">
+    <div className="relative min-h-[100dvh] flex items-center justify-center overflow-y-auto py-4 pb-8">
       <AuthBackground />
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10">
+      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto">
+        <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 md:p-10">
           {/* Logo & Tagline */}
           <AetherBrainLogo />
           <p className="text-center text-[#6c757d] text-sm mb-8 -mt-2">
@@ -204,7 +204,7 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
 
           {/* Error Display */}
           {error && (
-            <div className="mb-6 p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm">
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm leading-relaxed">
               {error}
             </div>
           )}
@@ -213,7 +213,7 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name Field */}
             <div className="space-y-2">
-              <Label htmlFor="signup-name" className="text-[#1a1a2e] text-sm font-medium">
+              <Label htmlFor="signup-name" className="text-[#1a1a2e] text-sm font-medium cursor-pointer">
                 Full Name
               </Label>
               <div className="relative">
@@ -227,14 +227,14 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="h-12 pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
+                  className="h-12 text-base pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
                 />
               </div>
             </div>
 
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="signup-email" className="text-[#1a1a2e] text-sm font-medium">
+              <Label htmlFor="signup-email" className="text-[#1a1a2e] text-sm font-medium cursor-pointer">
                 Email
               </Label>
               <div className="relative">
@@ -248,14 +248,14 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12 pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
+                  className="h-12 text-base pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
                 />
               </div>
             </div>
 
             {/* Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="signup-password" className="text-[#1a1a2e] text-sm font-medium">
+              <Label htmlFor="signup-password" className="text-[#1a1a2e] text-sm font-medium cursor-pointer">
                 Password
               </Label>
               <div className="relative">
@@ -270,7 +270,7 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="h-12 pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
+                  className="h-12 text-base pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
                 />
               </div>
 
@@ -317,16 +317,16 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
           </form>
 
           {/* Switch to Sign In */}
-          <p className="text-center text-sm text-[#6c757d] mt-8">
+          <div className="text-center text-sm text-[#6c757d] mt-8 flex items-center justify-center min-h-[44px]">
             Already have an account?{' '}
             <button
               type="button"
               onClick={() => onSwitch('signin')}
-              className="text-[#9D8BA7] font-semibold hover:text-[#6D597A] transition-colors duration-150"
+              className="text-[#9D8BA7] font-semibold hover:text-[#6D597A] transition-colors duration-150 px-2 py-1"
             >
               Sign in
             </button>
-          </p>
+          </div>
         </div>
       </div>
     </div>
@@ -368,10 +368,10 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4">
+    <div className="relative min-h-[100dvh] flex items-center justify-center overflow-y-auto py-4 pb-8">
       <AuthBackground />
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10">
+      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto">
+        <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 md:p-10">
           {/* Logo & Heading */}
           <AetherBrainLogo />
           <h1 className="text-center font-serif text-2xl font-bold text-[#1a1a2e] mb-1">
@@ -383,7 +383,7 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
 
           {/* Error Display */}
           {error && (
-            <div className="mb-6 p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm">
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm leading-relaxed">
               {error}
             </div>
           )}
@@ -392,7 +392,7 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="signin-email" className="text-[#1a1a2e] text-sm font-medium">
+              <Label htmlFor="signin-email" className="text-[#1a1a2e] text-sm font-medium cursor-pointer">
                 Email
               </Label>
               <div className="relative">
@@ -406,7 +406,7 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12 pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
+                  className="h-12 text-base pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
                 />
               </div>
             </div>
@@ -414,13 +414,13 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
             {/* Password Field */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="signin-password" className="text-[#1a1a2e] text-sm font-medium">
+                <Label htmlFor="signin-password" className="text-[#1a1a2e] text-sm font-medium cursor-pointer">
                   Password
                 </Label>
                 <button
                   type="button"
                   onClick={() => onSwitch('forgot')}
-                  className="text-xs text-[#9D8BA7] font-medium hover:text-[#6D597A] transition-colors duration-150"
+                  className="text-xs text-[#9D8BA7] font-medium hover:text-[#6D597A] transition-colors duration-150 min-h-[44px] flex items-center"
                 >
                   Forgot password?
                 </button>
@@ -436,7 +436,7 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-12 pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
+                  className="h-12 text-base pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
                 />
               </div>
             </div>
@@ -457,16 +457,16 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
           </form>
 
           {/* Switch to Sign Up */}
-          <p className="text-center text-sm text-[#6c757d] mt-8">
+          <div className="text-center text-sm text-[#6c757d] mt-8 flex items-center justify-center min-h-[44px]">
             Don&apos;t have an account?{' '}
             <button
               type="button"
               onClick={() => onSwitch('signup')}
-              className="text-[#9D8BA7] font-semibold hover:text-[#6D597A] transition-colors duration-150"
+              className="text-[#9D8BA7] font-semibold hover:text-[#6D597A] transition-colors duration-150 px-2 py-1"
             >
               Sign up
             </button>
-          </p>
+          </div>
         </div>
       </div>
     </div>
@@ -507,10 +507,10 @@ export function ForgotPassword({ onSwitch, onSuccess }: AuthProps) {
 
   if (sent) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center p-4">
+      <div className="relative min-h-[100dvh] flex items-center justify-center overflow-y-auto py-4 pb-8">
         <AuthBackground />
-        <div className="relative z-10 w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10 text-center">
+        <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto">
+          <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 md:p-10 text-center">
             <div className="flex flex-col items-center gap-4">
               <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
                 <Mail size={28} className="text-[#9D8BA7]" />
@@ -540,10 +540,10 @@ export function ForgotPassword({ onSwitch, onSuccess }: AuthProps) {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4">
+    <div className="relative min-h-[100dvh] flex items-center justify-center overflow-y-auto py-4 pb-8">
       <AuthBackground />
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10">
+      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto">
+        <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 md:p-10">
           {/* Logo & Heading */}
           <AetherBrainLogo />
           <h1 className="text-center font-serif text-2xl font-bold text-[#1a1a2e] mb-1">
@@ -555,7 +555,7 @@ export function ForgotPassword({ onSwitch, onSuccess }: AuthProps) {
 
           {/* Error Display */}
           {error && (
-            <div className="mb-6 p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm">
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm leading-relaxed">
               {error}
             </div>
           )}
@@ -564,7 +564,7 @@ export function ForgotPassword({ onSwitch, onSuccess }: AuthProps) {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="forgot-email" className="text-[#1a1a2e] text-sm font-medium">
+              <Label htmlFor="forgot-email" className="text-[#1a1a2e] text-sm font-medium cursor-pointer">
                 Email
               </Label>
               <div className="relative">
@@ -578,7 +578,7 @@ export function ForgotPassword({ onSwitch, onSuccess }: AuthProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12 pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
+                  className="h-12 text-base pl-11 rounded-xl border-[#9D8BA7]/15 bg-[#FFFAF5]/50 text-[#1a1a2e] placeholder:text-[#9D8BA7]/40 focus-visible:border-[#9D8BA7] focus-visible:ring-[#9D8BA7]/20 transition-all duration-200"
                 />
               </div>
             </div>
@@ -602,7 +602,7 @@ export function ForgotPassword({ onSwitch, onSuccess }: AuthProps) {
           <button
             type="button"
             onClick={() => onSwitch('signin')}
-            className="flex items-center justify-center gap-2 w-full text-sm text-[#9D8BA7] font-medium hover:text-[#6D597A] transition-colors duration-150 mt-8"
+            className="flex items-center justify-center gap-2 w-full text-sm text-[#9D8BA7] font-medium hover:text-[#6D597A] transition-colors duration-150 mt-8 min-h-[44px]"
           >
             <ArrowLeft size={14} />
             Back to Sign In

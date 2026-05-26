@@ -131,9 +131,9 @@ export function Collections() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-28 md:pb-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1
               className="text-2xl sm:text-3xl font-bold text-foreground"
@@ -145,9 +145,10 @@ export function Collections() {
               Organize your memories by theme
             </p>
           </div>
+          {/* Desktop Create Button */}
           <Button
             onClick={() => setCreateOpen(true)}
-            className="rounded-full px-4 shadow-sm"
+            className="hidden md:flex rounded-full px-4 shadow-sm"
             style={{ backgroundColor: '#9D8BA7', color: '#fff', border: 'none' }}
           >
             <Plus className="size-4 mr-1" />
@@ -155,13 +156,13 @@ export function Collections() {
           </Button>
         </div>
 
-        {/* Collections Grid */}
+        {/* Collections Grid - 2 cols mobile, 3 cols desktop */}
         {collections.length > 0 && collections.every((c) => c.memoryCount === 0) && (
           <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
             Save memories and assign them to collections to see them organized here
           </p>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-10">
           {collections.map((collection, index) => (
             <motion.div
               key={collection.id}
@@ -169,27 +170,25 @@ export function Collections() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.3 }}
               whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => handleCollectionClick(collection)}
-              className="bg-card rounded-2xl p-5 shadow-sm border border-border hover:shadow-md hover:border-[#9D8BA7]/15 transition-all cursor-pointer group"
+              className="tap-feedback bg-card rounded-2xl p-4 sm:p-5 shadow-sm border border-border hover:shadow-md hover:border-[#9D8BA7]/15 transition-all cursor-pointer group flex flex-col items-center text-center"
             >
               <div
-                className="h-10 w-10 rounded-xl flex items-center justify-center mb-3 transition-colors duration-300 group-hover:scale-110"
+                className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl flex items-center justify-center mb-3 transition-colors duration-300 group-hover:scale-110"
                 style={{ backgroundColor: `${collection.color}15` }}
               >
                 <CollectionIcon
                   iconKey={collection.icon}
-                  className="size-5 transition-colors duration-300"
+                  className="size-6 sm:size-7 transition-colors duration-300"
                   style={{ color: collection.color }}
                 />
               </div>
-              <h3 className="font-bold text-sm sm:text-base mb-1 text-foreground">
+              <h3 className="font-bold text-sm sm:text-base mb-1 text-foreground truncate w-full">
                 {collection.name}
               </h3>
               <p className="text-xs text-muted-foreground">
                 {collection.memoryCount} memories
-              </p>
-              <p className="text-xs mt-1 text-muted-foreground">
-                Updated {formatDate(collection.lastUpdated)}
               </p>
             </motion.div>
           ))}
@@ -218,7 +217,7 @@ export function Collections() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleTagClick}
-                  className={`px-3 py-1.5 rounded-full transition-colors bg-[#9D8BA7]/8 text-foreground hover:bg-[#9D8BA7]/15 ${
+                  className={`tap-feedback px-3 py-2 rounded-full transition-colors min-h-[44px] flex items-center bg-[#9D8BA7]/8 text-foreground hover:bg-[#9D8BA7]/15 active:bg-muted/50 ${
                     tag.count >= 6
                       ? 'text-base'
                       : tag.count >= 4
@@ -234,9 +233,18 @@ export function Collections() {
         </div>
       </div>
 
+      {/* Mobile FAB - Create Collection */}
+      <button
+        onClick={() => setCreateOpen(true)}
+        className="md:hidden fixed bottom-24 right-4 h-14 w-14 rounded-full bg-[#9D8BA7] text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40 tap-feedback"
+        aria-label="Create collection"
+      >
+        <Plus className="size-6" />
+      </button>
+
       {/* Create Collection Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md bg-background">
+        <DialogContent className="sm:max-w-md bg-background w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle
               className="text-foreground"
@@ -245,7 +253,7 @@ export function Collections() {
               Create Collection
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-5 py-2">
             <div>
               <label className="block text-sm font-medium mb-1.5 text-foreground">
                 Name
@@ -254,14 +262,14 @@ export function Collections() {
                 placeholder="Enter collection name..."
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="rounded-xl border-[#9D8BA7]/30"
+                className="rounded-xl border-[#9D8BA7]/30 h-11"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2 text-foreground">
                 Choose an Icon
               </label>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-2">
                 {iconOptions.map((opt) => {
                   const Icon = opt.icon
                   const isSelected = selectedIcon === opt.key
@@ -269,10 +277,10 @@ export function Collections() {
                     <button
                       key={opt.key}
                       onClick={() => setSelectedIcon(opt.key)}
-                      className={`p-2.5 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                      className={`tap-feedback p-3 sm:p-2.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-200 min-h-[56px] sm:min-h-[44px] ${
                         isSelected
-                          ? 'scale-110 shadow-sm bg-[#9D8BA7]/12'
-                          : 'hover:bg-muted'
+                          ? 'scale-105 shadow-sm bg-[#9D8BA7]/12'
+                          : 'hover:bg-muted active:bg-muted/50'
                       }`}
                       style={
                         isSelected
@@ -282,24 +290,25 @@ export function Collections() {
                       title={opt.label}
                     >
                       <Icon
-                        className={`size-5 ${isSelected ? 'text-[#9D8BA7]' : 'text-muted-foreground'}`}
+                        className={`size-5 sm:size-5 ${isSelected ? 'text-[#9D8BA7]' : 'text-muted-foreground'}`}
                       />
+                      <span className="text-[10px] text-muted-foreground leading-tight">{opt.label}</span>
                     </button>
                   )
                 })}
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
             <DialogClose asChild>
-              <Button variant="ghost" className="rounded-full">
+              <Button variant="ghost" className="rounded-full flex-1 sm:flex-none min-h-[44px]">
                 Cancel
               </Button>
             </DialogClose>
             <Button
               onClick={handleCreate}
               disabled={!newName.trim()}
-              className="rounded-full"
+              className="rounded-full flex-1 sm:flex-none min-h-[44px]"
               style={{ backgroundColor: '#9D8BA7', color: '#fff', border: 'none' }}
             >
               Create

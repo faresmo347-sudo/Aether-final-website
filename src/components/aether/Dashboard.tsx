@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useMemo, memo, useRef } from 'react'
+import { useState, useCallback, useMemo, memo, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles, CheckSquare, Square, Search } from 'lucide-react'
+import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles, CheckSquare, Square, Search, ClipboardPaste } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
 import { createMemory, getMemoryCount } from '@/lib/supabase/data'
@@ -50,7 +50,7 @@ const MemoryCard = memo(function MemoryCard({ memory, onClick }: { memory: Memor
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-card rounded-2xl p-4 shadow-sm border border-border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer group"
+      className="tap-feedback w-full text-left bg-card rounded-2xl p-4 shadow-sm border border-border transition-all duration-200 hover:-translate-y-0 md:hover:-translate-y-0.5 hover:shadow-lg cursor-pointer group active:scale-[0.98]"
     >
       <div className="flex items-start gap-3">
         <div className="flex items-center justify-center size-9 rounded-xl bg-[#9D8BA7]/10 shrink-0 mt-0.5">
@@ -88,7 +88,7 @@ const EmptyState = memo(function EmptyState({ collectionName }: { collectionName
   const { setCaptureModalOpen } = useAetherStore()
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+    <div className="flex flex-col items-center justify-center py-20 px-4 sm:px-6 text-center">
       {/* Animated brain icon with pulse ring */}
       <div className="relative mb-6">
         <div className="absolute inset-0 rounded-full bg-[#9D8BA7]/20 animate-ping opacity-20" />
@@ -116,7 +116,7 @@ const EmptyState = memo(function EmptyState({ collectionName }: { collectionName
       {!collectionName && (
         <button
           onClick={() => setCaptureModalOpen(true)}
-          className="mt-6 inline-flex items-center gap-2 bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl px-6 py-3 text-sm font-semibold shadow-lg shadow-[#9D8BA7]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#9D8BA7]/30 hover:-translate-y-0.5"
+          className="mt-6 inline-flex items-center gap-2 bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl px-6 py-3 text-sm font-semibold shadow-lg shadow-[#9D8BA7]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#9D8BA7]/30 hover:-translate-y-0.5 active:scale-[0.98] min-h-[44px]"
         >
           <Plus className="size-4" />
           Add Your First Memory
@@ -138,10 +138,10 @@ const FilterBar = memo(function FilterBar() {
 
   if (activeCollection) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-h-[44px]">
         <button
           onClick={() => setCollectionFilter(null)}
-          className="flex items-center gap-1.5 text-sm text-[#9D8BA7] hover:text-[#7A6B85] transition-colors font-medium"
+          className="tap-feedback flex items-center gap-1.5 text-sm text-[#9D8BA7] hover:text-[#7A6B85] transition-colors font-medium active:scale-[0.98] min-h-[44px]"
         >
           <ArrowLeft className="size-4" />
           All memories
@@ -156,15 +156,15 @@ const FilterBar = memo(function FilterBar() {
   }
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="flex items-center gap-2 overflow-x-auto flex-nowrap scrollbar-none pb-1 -mx-4 px-4 md:mx-0 md:px-0">
       {FILTERS.map((f) => (
         <button
           key={f}
           onClick={() => setActiveFilter(f)}
-          className={`text-sm px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 ${
+          className={`tap-feedback text-sm px-4 py-2.5 rounded-full whitespace-nowrap min-w-fit transition-all duration-200 active:scale-[0.96] min-h-[40px] ${
             activeFilter === f
               ? 'bg-[#9D8BA7] text-white shadow-sm'
-              : 'bg-card text-muted-foreground hover:bg-muted'
+              : 'bg-card text-muted-foreground hover:bg-muted border border-border'
           }`}
         >
           {f}
@@ -174,7 +174,7 @@ const FilterBar = memo(function FilterBar() {
   )
 })
 
-// ---------- Quick Capture Modal ----------
+// ---------- Quick Capture Modal (Bottom Sheet on Mobile) ----------
 
 function QuickCaptureModal() {
   const {
@@ -203,6 +203,49 @@ function QuickCaptureModal() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragY, setDragY] = useState(0)
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Drag-to-dismiss logic
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only allow drag from the drag handle area (top 40px of sheet)
+    const sheet = sheetRef.current
+    if (!sheet) return
+    const rect = sheet.getBoundingClientRect()
+    const touchY = e.touches[0].clientY
+    // Only start drag if touching near the top (drag handle area)
+    if (touchY - rect.top < 48) {
+      setIsDragging(true)
+      setDragY(0)
+    }
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging) return
+    const deltaY = e.touches[0].clientY - (e as any)._startY || 0
+    // Only allow dragging down
+    setDragY(Math.max(0, deltaY))
+  }, [isDragging])
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isDragging) return
+    setIsDragging(false)
+    // Dismiss if dragged more than 100px down
+    if (dragY > 100) {
+      handleClose()
+    }
+    setDragY(0)
+  }, [isDragging, dragY])
 
   const resetForm = useCallback(() => {
     setTextContent('')
@@ -224,10 +267,10 @@ function QuickCaptureModal() {
     setMediaRecorder(null)
   }, [mediaRecorder])
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setCaptureModalOpen(false)
     resetForm()
-  }
+  }, [setCaptureModalOpen, resetForm])
 
   // Generate AI tags based on content (for text, voice, link)
   const generateTags = useCallback(async (
@@ -237,7 +280,6 @@ function QuickCaptureModal() {
     imgDescription?: string,
   ): Promise<string[]> => {
     if (!autoTagging || !content.trim()) {
-      // Smarter fallback tags based on content keywords
       return getSmartFallbackTags(content, type)
     }
 
@@ -279,9 +321,7 @@ function QuickCaptureModal() {
           ? voiceTranscript.slice(0, 50)
           : 'Voice memo'
         content = voiceTranscript || 'Recorded voice memo'
-        // Pass the summary to generate tags based on what was actually said
         tags = await generateTags(content, 'voice', voiceSummary || undefined)
-        // Use the AI summary from transcription if available
         if (voiceSummary) {
           aiSummary = voiceSummary
         }
@@ -294,7 +334,6 @@ function QuickCaptureModal() {
         break
 
       case 'image':
-        // For images, use the VLM-generated description and tags
         if (imageDescription && imageTags.length > 0) {
           title = imageDescription.slice(0, 50) || 'Image capture'
           content = imageDescription
@@ -314,7 +353,6 @@ function QuickCaptureModal() {
         break
     }
 
-    // Check free tier limit before creating
     try {
       if (user?.plan === 'free') {
         const count = await getMemoryCount()
@@ -341,12 +379,9 @@ function QuickCaptureModal() {
 
       addMemory(returnedMemory)
     } catch (error: any) {
-      // If the error is about limits from Supabase, show upgrade dialog
       if (error?.message?.toLowerCase().includes('limit') || error?.message?.toLowerCase().includes('quota')) {
         setShowUpgradeDialog(true)
-      }
-      // Otherwise, fall back to local-only save so the user doesn't lose their data
-      else {
+      } else {
         addMemory({
           id,
           type: activeCaptureTab,
@@ -369,22 +404,19 @@ function QuickCaptureModal() {
     handleClose()
   }, [activeCaptureTab, textContent, voiceTranscript, voiceSummary, linkUrl, imagePreview, imageDescription, imageTags, generateTags, addMemory, handleClose, user])
 
-  // Handle image file selection — actually read and analyze the image
+  // Handle image file selection
   const handleImageUpload = useCallback(async (file: File) => {
-    // Read the image for preview and base64
     const reader = new FileReader()
     reader.onloadend = async () => {
       const dataUrl = reader.result as string
       setImagePreview(dataUrl)
 
-      // Extract base64 for API calls
       const base64 = dataUrl.split(',')[1]
       if (base64) {
         setImageBase64(base64)
         setIsAnalyzingImage(true)
 
         try {
-          // Call the VLM image analysis endpoint
           const res = await fetch('/api/ai/analyze-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -410,7 +442,7 @@ function QuickCaptureModal() {
     reader.readAsDataURL(file)
   }, [])
 
-  // Start voice recording with real MediaRecorder API
+  // Start voice recording
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -427,7 +459,6 @@ function QuickCaptureModal() {
         stream.getTracks().forEach((t) => t.stop())
         const blob = new Blob(chunks, { type: 'audio/webm' })
 
-        // Convert to base64 and send to ASR API
         const reader = new FileReader()
         reader.onloadend = async () => {
           const base64Audio = (reader.result as string).split(',')[1]
@@ -444,7 +475,6 @@ function QuickCaptureModal() {
               } else {
                 setVoiceTranscript('Voice memo recorded — transcription will be available shortly.')
               }
-              // Capture the summary for use in tag generation and memory creation
               if (data.summary) {
                 setVoiceSummary(data.summary)
               }
@@ -462,7 +492,6 @@ function QuickCaptureModal() {
       recorder.start()
       setIsRecording(true)
     } catch {
-      // Fallback if mic permission denied
       setIsRecording(true)
       setTimeout(() => {
         setIsRecording(false)
@@ -478,6 +507,19 @@ function QuickCaptureModal() {
     setIsRecording(false)
   }, [mediaRecorder])
 
+  // Paste from clipboard
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) {
+        setLinkUrl(text)
+        setLinkPreview(text.length > 5)
+      }
+    } catch {
+      // Clipboard API not available or permission denied
+    }
+  }, [])
+
   const captureTabs: { key: typeof activeCaptureTab; icon: React.ReactNode; label: string }[] = [
     { key: 'text', icon: <FileText className="size-4" />, label: 'Text' },
     { key: 'voice', icon: <Mic className="size-4" />, label: 'Voice' },
@@ -487,6 +529,365 @@ function QuickCaptureModal() {
 
   if (!captureModalOpen) return null
 
+  // ---- Mobile Bottom Sheet ----
+  if (isMobile) {
+    return (
+      <>
+        {/* Upgrade Dialog */}
+        <AnimatePresence>
+          {showUpgradeDialog && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowUpgradeDialog(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: 'spring', duration: 0.5 }}
+                className="bg-card rounded-3xl max-w-sm w-full mx-4 overflow-hidden shadow-2xl border border-[#9D8BA7]/20"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="h-1.5 bg-gradient-to-r from-[#9D8BA7] to-[#C4B5CE]" />
+                <div className="p-6 text-center">
+                  <div className="mx-auto size-16 rounded-2xl bg-[#9D8BA7]/10 flex items-center justify-center mb-4">
+                    <Sparkles className="size-8 text-[#9D8BA7]" />
+                  </div>
+                  <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
+                    You've reached your Seed plan limit
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                    50 memories saved! Upgrade to <span className="font-semibold text-[#9D8BA7]">Bloom</span> for unlimited memories, advanced AI insights, and more.
+                  </p>
+                  <button
+                    className="w-full bg-[#9D8BA7] hover:bg-[#8A7A96] text-white rounded-xl h-11 text-sm font-semibold transition-colors mb-3 min-h-[44px]"
+                    onClick={() => setShowUpgradeDialog(false)}
+                  >
+                    Upgrade to Bloom
+                  </button>
+                  <button
+                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2 min-h-[44px]"
+                    onClick={() => setShowUpgradeDialog(false)}
+                  >
+                    Not now
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Overlay */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-black/40"
+          onClick={handleClose}
+        />
+
+        {/* Bottom Sheet */}
+        <motion.div
+          ref={sheetRef}
+          initial={{ y: '100%' }}
+          animate={{ y: isDragging ? dragY : 0, opacity: 1 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl h-[85dvh] flex flex-col shadow-2xl"
+          style={{ transform: isDragging ? `translateY(${dragY}px)` : undefined }}
+          onTouchStart={(e) => {
+            const sheet = sheetRef.current
+            if (!sheet) return
+            const rect = sheet.getBoundingClientRect()
+            const touchY = e.touches[0].clientY
+            if (touchY - rect.top < 48) {
+              setIsDragging(true)
+              ;(e as any)._startY = touchY
+            }
+          }}
+          onTouchMove={(e) => {
+            if (!isDragging) return
+            const sheet = sheetRef.current
+            if (!sheet) return
+            const rect = sheet.getBoundingClientRect()
+            const startY = (e as any)._startY || (rect.bottom - 85 * window.innerHeight / 100)
+            const currentY = e.touches[0].clientY
+            const delta = currentY - startY
+            setDragY(Math.max(0, delta))
+          }}
+          onTouchEnd={() => {
+            if (!isDragging) return
+            setIsDragging(false)
+            if (dragY > 100) {
+              handleClose()
+            }
+            setDragY(0)
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Drag Handle */}
+          <div className="flex justify-center pt-3 pb-2 shrink-0">
+            <div className="w-10 h-1 rounded-full bg-muted" />
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pb-2 shrink-0">
+            <h2 className="font-serif text-lg font-semibold text-foreground">
+              Quick Capture
+            </h2>
+            <button
+              onClick={handleClose}
+              className="size-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground min-w-[44px] min-h-[44px]"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          {/* Tabs — touch-friendly with larger targets */}
+          <div className="flex items-center gap-1 px-5 pb-3 shrink-0">
+            {captureTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveCaptureTab(tab.key)}
+                className={`tap-feedback flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-full transition-all duration-200 active:scale-[0.96] min-h-[44px] ${
+                  activeCaptureTab === tab.key
+                    ? 'bg-[#9D8BA7] text-white'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content — scrollable, takes remaining space */}
+          <div className="flex-1 overflow-y-auto ios-scroll px-5 pb-4 min-h-0">
+            {/* Text */}
+            {activeCaptureTab === 'text' && (
+              <textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                placeholder="What's on your mind?"
+                className="w-full min-h-[200px] resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
+              />
+            )}
+
+            {/* Voice */}
+            {activeCaptureTab === 'voice' && (
+              <div className="flex flex-col items-center py-4">
+                <div className="relative">
+                  {/* Pulsing ring animation when recording */}
+                  {isRecording && (
+                    <div className="absolute inset-0 rounded-full bg-red-500/30 animate-pulse-ring" />
+                  )}
+                  <button
+                    onClick={() => {
+                      if (!isRecording) {
+                        startRecording()
+                      } else {
+                        stopRecording()
+                      }
+                    }}
+                    className={`relative size-16 rounded-full flex items-center justify-center transition-all duration-300 min-w-[64px] min-h-[64px] ${
+                      isRecording
+                        ? 'bg-red-500 text-white shadow-lg shadow-red-200'
+                        : 'bg-[#9D8BA7]/10 text-[#9D8BA7] hover:bg-[#9D8BA7]/20'
+                    }`}
+                  >
+                    <Mic className="size-7" />
+                  </button>
+                </div>
+
+                {isRecording && (
+                  <p className="text-sm text-red-500 mt-3 font-medium">
+                    Recording... tap to stop
+                  </p>
+                )}
+
+                {!isRecording && !voiceTranscript && (
+                  <p className="text-sm text-muted-foreground mt-3">
+                    Tap to start recording
+                  </p>
+                )}
+
+                {voiceTranscript && !isRecording && (
+                  <div className="mt-4 w-full space-y-2">
+                    <div className="rounded-xl border border-border bg-background p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Transcription</p>
+                      <p className="text-sm text-foreground leading-relaxed">
+                        {voiceTranscript}
+                      </p>
+                    </div>
+                    {voiceSummary && (
+                      <div className="rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
+                        <p className="text-xs text-[#9D8BA7] font-medium mb-1">AI Summary</p>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {voiceSummary}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Link */}
+            {activeCaptureTab === 'link' && (
+              <div>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={linkUrl}
+                    onChange={(e) => {
+                      setLinkUrl(e.target.value)
+                      setLinkPreview(e.target.value.length > 5)
+                    }}
+                    placeholder="Paste any link..."
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow min-h-[44px]"
+                  />
+                  {/* Paste button */}
+                  <button
+                    onClick={handlePaste}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-[#9D8BA7] hover:text-[#7A6B85] bg-[#9D8BA7]/10 hover:bg-[#9D8BA7]/20 rounded-lg px-2.5 py-1.5 transition-colors min-h-[36px]"
+                  >
+                    <ClipboardPaste className="size-3.5" />
+                    <span>Paste</span>
+                  </button>
+                </div>
+
+                {linkPreview && linkUrl.length > 5 && (
+                  <div className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3">
+                    <div className="size-14 rounded-lg bg-[#9D8BA7]/10 flex items-center justify-center shrink-0">
+                      <Link2 className="size-5 text-[#9D8BA7]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        Article Preview
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        A preview of the content from the link you saved. The full
+                        article will be summarized and tagged automatically.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Image */}
+            {activeCaptureTab === 'image' && (
+              <div>
+                {!imagePreview ? (
+                  <label className="tap-feedback flex flex-col items-center justify-center min-h-[200px] rounded-xl border-2 border-dashed border-border bg-background cursor-pointer hover:border-[#9D8BA7]/40 transition-colors active:scale-[0.98]">
+                    <Upload className="size-8 text-[#9D8BA7]/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Tap to upload or take a photo
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">
+                      Camera or photo library
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          handleImageUpload(file)
+                        }
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <div className="relative">
+                    {/* Full width image preview */}
+                    <img
+                      src={imagePreview}
+                      alt="Uploaded image preview"
+                      className="w-full rounded-xl object-cover max-h-[300px]"
+                    />
+                    <button
+                      onClick={() => {
+                        setImagePreview(null)
+                        setImageBase64(null)
+                        setImageDescription('')
+                        setImageTags([])
+                      }}
+                      className="absolute top-2 right-2 size-8 rounded-full bg-card/80 flex items-center justify-center text-muted-foreground hover:text-red-500 transition-colors min-w-[36px] min-h-[36px]"
+                    >
+                      <X className="size-4" />
+                    </button>
+
+                    {/* AI analysis overlay */}
+                    {isAnalyzingImage && (
+                      <div className="absolute inset-0 bg-black/50 rounded-xl flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="size-6 text-white animate-spin" />
+                        <p className="text-xs text-white font-medium">Analyzing image...</p>
+                      </div>
+                    )}
+
+                    {/* Show AI analysis results */}
+                    {!isAnalyzingImage && imageDescription && (
+                      <div className="mt-2 rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Eye className="size-3.5 text-[#9D8BA7]" />
+                          <p className="text-xs text-[#9D8BA7] font-medium">AI Analysis</p>
+                        </div>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {imageDescription}
+                        </p>
+                        {imageTags.length > 0 && (
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            {imageTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="bg-[#9D8BA7]/10 text-[#9D8BA7] text-[10px] px-2 py-0.5 rounded-full"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Save button — always visible, full width, min 48px */}
+          <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border/50 bg-card">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || isAnalyzingImage}
+              className="w-full bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl min-h-[48px] text-sm font-medium transition-colors"
+            >
+              {isSaving || isAnalyzingImage ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  {isAnalyzingImage ? 'Analyzing image...' : 'Saving & tagging...'}
+                </>
+              ) : (
+                <>
+                  <Plus className="size-4 mr-1" />
+                  Save Memory
+                </>
+              )}
+            </Button>
+          </div>
+        </motion.div>
+      </>
+    )
+  }
+
+  // ---- Desktop Centered Modal ----
   return (
     <>
       {/* Upgrade Dialog */}
@@ -507,35 +908,23 @@ function QuickCaptureModal() {
               className="bg-card rounded-3xl max-w-sm w-full mx-4 overflow-hidden shadow-2xl border border-[#9D8BA7]/20"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Decorative top accent */}
               <div className="h-1.5 bg-gradient-to-r from-[#9D8BA7] to-[#C4B5CE]" />
-
               <div className="p-6 text-center">
-                {/* Icon */}
                 <div className="mx-auto size-16 rounded-2xl bg-[#9D8BA7]/10 flex items-center justify-center mb-4">
                   <Sparkles className="size-8 text-[#9D8BA7]" />
                 </div>
-
                 <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
                   You've reached your Seed plan limit
                 </h3>
-
                 <p className="text-sm text-muted-foreground leading-relaxed mb-6">
                   50 memories saved! Upgrade to <span className="font-semibold text-[#9D8BA7]">Bloom</span> for unlimited memories, advanced AI insights, and more.
                 </p>
-
-                {/* Upgrade button */}
                 <button
                   className="w-full bg-[#9D8BA7] hover:bg-[#8A7A96] text-white rounded-xl h-11 text-sm font-semibold transition-colors mb-3"
-                  onClick={() => {
-                    setShowUpgradeDialog(false)
-                    // TODO: Navigate to upgrade flow
-                  }}
+                  onClick={() => setShowUpgradeDialog(false)}
                 >
                   Upgrade to Bloom
                 </button>
-
-                {/* Dismiss button */}
                 <button
                   className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
                   onClick={() => setShowUpgradeDialog(false)}
@@ -548,246 +937,257 @@ function QuickCaptureModal() {
         )}
       </AnimatePresence>
 
-      {/* Capture Modal */}
+      {/* Capture Modal — Desktop */}
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
         onClick={handleClose}
       >
-      <div
-        className="bg-card rounded-2xl max-w-lg w-full mx-4 overflow-hidden shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
-          <h2 className="font-serif text-lg font-semibold text-foreground">
-            Quick Capture
-          </h2>
-          <button
-            onClick={handleClose}
-            className="size-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-1 px-5 pb-3">
-          {captureTabs.map((tab) => (
+        <div
+          className="bg-card rounded-2xl max-w-lg w-full mx-4 overflow-hidden shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-2">
+            <h2 className="font-serif text-lg font-semibold text-foreground">
+              Quick Capture
+            </h2>
             <button
-              key={tab.key}
-              onClick={() => setActiveCaptureTab(tab.key)}
-              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full transition-all duration-200 ${
-                activeCaptureTab === tab.key
-                  ? 'bg-[#9D8BA7] text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-muted'
-              }`}
+              onClick={handleClose}
+              className="size-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground"
             >
-              {tab.icon}
-              {tab.label}
+              <X className="size-4" />
             </button>
-          ))}
-        </div>
+          </div>
 
-        {/* Tab content */}
-        <div className="px-5 pb-4 min-h-[220px]">
-          {/* Text */}
-          {activeCaptureTab === 'text' && (
-            <textarea
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-              placeholder="What's on your mind?"
-              className="w-full h-36 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
-            />
-          )}
-
-          {/* Voice */}
-          {activeCaptureTab === 'voice' && (
-            <div className="flex flex-col items-center py-4">
+          {/* Tabs */}
+          <div className="flex items-center gap-1 px-5 pb-3">
+            {captureTabs.map((tab) => (
               <button
-                onClick={() => {
-                  if (!isRecording) {
-                    startRecording()
-                  } else {
-                    stopRecording()
-                  }
-                }}
-                className={`size-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isRecording
-                    ? 'bg-red-500 text-white shadow-lg shadow-red-200'
-                    : 'bg-[#9D8BA7]/10 text-[#9D8BA7] hover:bg-[#9D8BA7]/20'
+                key={tab.key}
+                onClick={() => setActiveCaptureTab(tab.key)}
+                className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full transition-all duration-200 ${
+                  activeCaptureTab === tab.key
+                    ? 'bg-[#9D8BA7] text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-muted'
                 }`}
               >
-                <Mic className="size-7" />
+                {tab.icon}
+                {tab.label}
               </button>
+            ))}
+          </div>
 
-              {isRecording && (
-                <p className="text-sm text-red-500 mt-3 font-medium">
-                  Recording... tap to stop
-                </p>
-              )}
-
-              {!isRecording && !voiceTranscript && (
-                <p className="text-sm text-muted-foreground mt-3">
-                  Tap to start recording
-                </p>
-              )}
-
-              {voiceTranscript && !isRecording && (
-                <div className="mt-4 w-full space-y-2">
-                  <div className="rounded-xl border border-border bg-background p-3">
-                    <p className="text-xs text-muted-foreground mb-1">Transcription</p>
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {voiceTranscript}
-                    </p>
-                  </div>
-                  {voiceSummary && (
-                    <div className="rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
-                      <p className="text-xs text-[#9D8BA7] font-medium mb-1">AI Summary</p>
-                      <p className="text-sm text-foreground leading-relaxed">
-                        {voiceSummary}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Link */}
-          {activeCaptureTab === 'link' && (
-            <div>
-              <input
-                type="url"
-                value={linkUrl}
-                onChange={(e) => {
-                  setLinkUrl(e.target.value)
-                  setLinkPreview(e.target.value.length > 5)
-                }}
-                placeholder="Paste any link..."
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
+          {/* Tab content */}
+          <div className="px-5 pb-4 min-h-[220px]">
+            {/* Text */}
+            {activeCaptureTab === 'text' && (
+              <textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                placeholder="What's on your mind?"
+                className="w-full h-36 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
               />
+            )}
 
-              {linkPreview && linkUrl.length > 5 && (
-                <div className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3">
-                  <div className="size-14 rounded-lg bg-[#9D8BA7]/10 flex items-center justify-center shrink-0">
-                    <Link2 className="size-5 text-[#9D8BA7]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      Article Preview
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      A preview of the content from the link you saved. The full
-                      article will be summarized and tagged automatically.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Image */}
-          {activeCaptureTab === 'image' && (
-            <div>
-              {!imagePreview ? (
-                <label className="flex flex-col items-center justify-center h-36 rounded-xl border-2 border-dashed border-border bg-background cursor-pointer hover:border-[#9D8BA7]/40 transition-colors">
-                  <Upload className="size-8 text-[#9D8BA7]/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Drop an image or click to upload
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        handleImageUpload(file)
-                      }
-                    }}
-                  />
-                </label>
-              ) : (
-                <div className="relative rounded-xl overflow-hidden">
-                  {/* Show the actual image preview */}
-                  <img
-                    src={imagePreview}
-                    alt="Uploaded image preview"
-                    className="w-full h-36 object-cover rounded-xl"
-                  />
+            {/* Voice */}
+            {activeCaptureTab === 'voice' && (
+              <div className="flex flex-col items-center py-4">
+                <div className="relative">
+                  {isRecording && (
+                    <div className="absolute inset-0 rounded-full bg-red-500/30 animate-pulse-ring" />
+                  )}
                   <button
                     onClick={() => {
-                      setImagePreview(null)
-                      setImageBase64(null)
-                      setImageDescription('')
-                      setImageTags([])
+                      if (!isRecording) {
+                        startRecording()
+                      } else {
+                        stopRecording()
+                      }
                     }}
-                    className="absolute top-2 right-2 size-6 rounded-full bg-card/80 flex items-center justify-center text-muted-foreground hover:text-red-500 transition-colors"
+                    className={`relative size-16 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isRecording
+                        ? 'bg-red-500 text-white shadow-lg shadow-red-200'
+                        : 'bg-[#9D8BA7]/10 text-[#9D8BA7] hover:bg-[#9D8BA7]/20'
+                    }`}
                   >
-                    <X className="size-3" />
+                    <Mic className="size-7" />
                   </button>
-
-                  {/* AI analysis overlay */}
-                  {isAnalyzingImage && (
-                    <div className="absolute inset-0 bg-black/50 rounded-xl flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="size-6 text-white animate-spin" />
-                      <p className="text-xs text-white font-medium">Analyzing image...</p>
-                    </div>
-                  )}
-
-                  {/* Show AI analysis results */}
-                  {!isAnalyzingImage && imageDescription && (
-                    <div className="mt-2 rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Eye className="size-3.5 text-[#9D8BA7]" />
-                        <p className="text-xs text-[#9D8BA7] font-medium">AI Analysis</p>
-                      </div>
-                      <p className="text-sm text-foreground leading-relaxed">
-                        {imageDescription}
-                      </p>
-                      {imageTags.length > 0 && (
-                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                          {imageTags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="bg-[#9D8BA7]/10 text-[#9D8BA7] text-[10px] px-2 py-0.5 rounded-full"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* Save button */}
-        <div className="px-5 pb-5">
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || isAnalyzingImage}
-            className="w-full bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl h-11 text-sm font-medium transition-colors"
-          >
-            {isSaving || isAnalyzingImage ? (
-              <>
-                <Loader2 className="size-4 mr-2 animate-spin" />
-                {isAnalyzingImage ? 'Analyzing image...' : 'Saving & tagging...'}
-              </>
-            ) : (
-              <>
-                <Plus className="size-4 mr-1" />
-                Save Memory
-              </>
+                {isRecording && (
+                  <p className="text-sm text-red-500 mt-3 font-medium">
+                    Recording... click to stop
+                  </p>
+                )}
+
+                {!isRecording && !voiceTranscript && (
+                  <p className="text-sm text-muted-foreground mt-3">
+                    Click to start recording
+                  </p>
+                )}
+
+                {voiceTranscript && !isRecording && (
+                  <div className="mt-4 w-full space-y-2">
+                    <div className="rounded-xl border border-border bg-background p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Transcription</p>
+                      <p className="text-sm text-foreground leading-relaxed">
+                        {voiceTranscript}
+                      </p>
+                    </div>
+                    {voiceSummary && (
+                      <div className="rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
+                        <p className="text-xs text-[#9D8BA7] font-medium mb-1">AI Summary</p>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {voiceSummary}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
-          </Button>
+
+            {/* Link */}
+            {activeCaptureTab === 'link' && (
+              <div>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={linkUrl}
+                    onChange={(e) => {
+                      setLinkUrl(e.target.value)
+                      setLinkPreview(e.target.value.length > 5)
+                    }}
+                    placeholder="Paste any link..."
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
+                  />
+                  <button
+                    onClick={handlePaste}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-[#9D8BA7] hover:text-[#7A6B85] bg-[#9D8BA7]/10 hover:bg-[#9D8BA7]/20 rounded-lg px-2.5 py-1.5 transition-colors"
+                  >
+                    <ClipboardPaste className="size-3.5" />
+                    <span>Paste</span>
+                  </button>
+                </div>
+
+                {linkPreview && linkUrl.length > 5 && (
+                  <div className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3">
+                    <div className="size-14 rounded-lg bg-[#9D8BA7]/10 flex items-center justify-center shrink-0">
+                      <Link2 className="size-5 text-[#9D8BA7]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        Article Preview
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        A preview of the content from the link you saved. The full
+                        article will be summarized and tagged automatically.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Image */}
+            {activeCaptureTab === 'image' && (
+              <div>
+                {!imagePreview ? (
+                  <label className="flex flex-col items-center justify-center h-36 rounded-xl border-2 border-dashed border-border bg-background cursor-pointer hover:border-[#9D8BA7]/40 transition-colors">
+                    <Upload className="size-8 text-[#9D8BA7]/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Drop an image or click to upload
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          handleImageUpload(file)
+                        }
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <div className="relative rounded-xl overflow-hidden">
+                    <img
+                      src={imagePreview}
+                      alt="Uploaded image preview"
+                      className="w-full h-36 object-cover rounded-xl"
+                    />
+                    <button
+                      onClick={() => {
+                        setImagePreview(null)
+                        setImageBase64(null)
+                        setImageDescription('')
+                        setImageTags([])
+                      }}
+                      className="absolute top-2 right-2 size-6 rounded-full bg-card/80 flex items-center justify-center text-muted-foreground hover:text-red-500 transition-colors"
+                    >
+                      <X className="size-3" />
+                    </button>
+
+                    {isAnalyzingImage && (
+                      <div className="absolute inset-0 bg-black/50 rounded-xl flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="size-6 text-white animate-spin" />
+                        <p className="text-xs text-white font-medium">Analyzing image...</p>
+                      </div>
+                    )}
+
+                    {!isAnalyzingImage && imageDescription && (
+                      <div className="mt-2 rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Eye className="size-3.5 text-[#9D8BA7]" />
+                          <p className="text-xs text-[#9D8BA7] font-medium">AI Analysis</p>
+                        </div>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {imageDescription}
+                        </p>
+                        {imageTags.length > 0 && (
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            {imageTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="bg-[#9D8BA7]/10 text-[#9D8BA7] text-[10px] px-2 py-0.5 rounded-full"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Save button */}
+          <div className="px-5 pb-5">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || isAnalyzingImage}
+              className="w-full bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl h-11 text-sm font-medium transition-colors"
+            >
+              {isSaving || isAnalyzingImage ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  {isAnalyzingImage ? 'Analyzing image...' : 'Saving & tagging...'}
+                </>
+              ) : (
+                <>
+                  <Plus className="size-4 mr-1" />
+                  Save Memory
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
     </>
   )
 }
@@ -843,7 +1243,6 @@ function getSmartFallbackTags(content: string, type: string): string[] {
     }
   }
 
-  // Type-specific fallbacks only if no content-based tags were found
   if (tags.length === 0) {
     switch (type) {
       case 'voice':
@@ -866,7 +1265,6 @@ export default function Dashboard() {
   const { memories, activeFilter, collectionFilter, setSelectedMemoryId, setCurrentView, collections, searchQuery, setSearchQuery } = useAetherStore()
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set())
 
-  // Get the active collection name for empty state messaging
   const activeCollection = useMemo(
     () => (collectionFilter ? collections.find((c) => c.id === collectionFilter) : null),
     [collectionFilter, collections]
@@ -895,7 +1293,6 @@ export default function Dashboard() {
           const text = match[1].trim()
           if (text.length >= 5) {
             const id = `task-${mem.id}-${tasks.length}`
-            // Avoid duplicates
             if (!tasks.some(t => t.text.toLowerCase() === text.toLowerCase())) {
               tasks.push({
                 id,
@@ -931,7 +1328,6 @@ export default function Dashboard() {
       filtered = filtered.filter((m) => m.collectionId === collectionFilter)
     }
 
-    // Apply search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       filtered = filtered.filter(
@@ -954,8 +1350,8 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search Bar */}
-      <div className="shrink-0 mb-3">
+      {/* Search Bar — full width, min 44px height */}
+      <div className="shrink-0 mb-3 px-0 md:px-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <input
@@ -963,12 +1359,12 @@ export default function Dashboard() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search memories..."
-            className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all"
+            className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all min-h-[44px]"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
             >
               <X className="size-3.5" />
             </button>
@@ -976,12 +1372,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter Bar — horizontally scrollable on mobile */}
       <div className="shrink-0 pb-4">
         <FilterBar />
       </div>
 
-      {/* Extracted Tasks Section */}
+      {/* Extracted Tasks Section — mobile-friendly touch targets */}
       {extractedTasks.length > 0 && (
         <div className="shrink-0 mb-4">
           <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
@@ -992,17 +1388,17 @@ export default function Dashboard() {
                 {completedTasks.size}/{extractedTasks.length} done
               </span>
             </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+            <div className="space-y-1 max-h-48 overflow-y-auto ios-scroll">
               {extractedTasks.map((task) => (
                 <button
                   key={task.id}
                   onClick={() => toggleTask(task.id)}
-                  className="w-full flex items-start gap-2.5 text-left group"
+                  className="tap-feedback w-full flex items-start gap-2.5 text-left py-2 active:scale-[0.98] transition-transform"
                 >
                   {completedTasks.has(task.id) ? (
-                    <CheckSquare className="size-4 text-[#9D8BA7] shrink-0 mt-0.5" />
+                    <CheckSquare className="size-5 text-[#9D8BA7] shrink-0 mt-0.5" />
                   ) : (
-                    <Square className="size-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-[#9D8BA7] transition-colors" />
+                    <Square className="size-5 text-muted-foreground shrink-0 mt-0.5 group-hover:text-[#9D8BA7] transition-colors" />
                   )}
                   <div className="min-w-0">
                     <p className={`text-sm leading-relaxed transition-colors ${completedTasks.has(task.id) ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
@@ -1017,8 +1413,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Memory Feed */}
-      <div className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar">
+      {/* Memory Feed — iOS-style scroll, mobile gap */}
+      <div className="flex-1 overflow-y-auto min-h-0 ios-scroll">
         {sortedMemories.length > 0 ? (
           <div className="flex flex-col gap-3 pb-4">
             {sortedMemories.map((memory) => (

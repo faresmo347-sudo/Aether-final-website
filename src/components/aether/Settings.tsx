@@ -14,6 +14,10 @@ import {
   Loader2,
   LogOut,
   AlertTriangle,
+  Moon,
+  MessageSquare,
+  Tag,
+  Camera,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -180,12 +184,22 @@ export function Settings() {
     }
   }, [toast])
 
+  // ──── Logout handler ────
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut()
+      setCurrentView('landing')
+    } catch (err) {
+      console.error('Sign out failed:', err)
+    }
+  }, [setCurrentView])
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-2xl mx-auto px-0 sm:px-6 py-6 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold font-serif text-foreground">
+        <div className="px-4 sm:px-0 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
             Settings
           </h1>
           <p className="text-sm mt-1 text-muted-foreground">
@@ -193,28 +207,25 @@ export function Settings() {
           </p>
         </div>
 
-        <div className="space-y-6">
-          {/* ── Profile Section ── */}
+        <div className="space-y-0">
+          {/* ── Profile Section - Centered Avatar ── */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="bg-card rounded-2xl p-6 shadow-sm border border-border"
+            className="px-4 sm:px-0 py-6"
           >
             {isEditing ? (
               /* ── Edit Mode ── */
               <div className="space-y-4">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="size-14 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0 bg-[#9D8BA7]">
+                <div className="flex flex-col items-center mb-4">
+                  <div className="size-20 rounded-full flex items-center justify-center text-white font-bold text-2xl bg-[#9D8BA7] mb-2">
                     {editName.trim().split(' ').length >= 2
                       ? (editName.trim().split(' ')[0][0] + editName.trim().split(' ').pop()![0]).toUpperCase()
                       : editName.trim().slice(0, 2).toUpperCase() || 'AJ'
                     }
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">Edit Profile</p>
-                    <p className="text-xs text-muted-foreground">Update your name and email</p>
-                  </div>
+                  <p className="text-xs text-muted-foreground">Editing profile</p>
                 </div>
 
                 <div>
@@ -225,7 +236,7 @@ export function Settings() {
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Your name"
-                    className="rounded-xl"
+                    className="rounded-xl h-11"
                   />
                 </div>
 
@@ -238,7 +249,7 @@ export function Settings() {
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
                     placeholder="your@email.com"
-                    className="rounded-xl"
+                    className="rounded-xl h-11"
                   />
                 </div>
 
@@ -247,7 +258,7 @@ export function Settings() {
                     variant="outline"
                     size="sm"
                     onClick={handleEditCancel}
-                    className="rounded-xl"
+                    className="rounded-xl min-h-[44px]"
                   >
                     <X className="size-3.5 mr-1" />
                     Cancel
@@ -256,7 +267,7 @@ export function Settings() {
                     size="sm"
                     onClick={handleEditSave}
                     disabled={!editName.trim() || !editEmail.trim()}
-                    className="rounded-xl bg-[#9D8BA7] hover:bg-[#7A6B85] text-white"
+                    className="rounded-xl min-h-[44px] bg-[#9D8BA7] hover:bg-[#7A6B85] text-white"
                   >
                     <Check className="size-3.5 mr-1" />
                     Save
@@ -264,248 +275,268 @@ export function Settings() {
                 </div>
               </div>
             ) : (
-              /* ── View Mode ── */
-              <div className="flex items-center gap-4">
-                <div className="size-14 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0 bg-[#9D8BA7]">
-                  {profile.initials}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-bold text-base text-foreground">
-                    {profile.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {profile.email}
-                  </p>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleEditStart}
-                    className="rounded-full text-xs text-[#9D8BA7] hover:text-[#7A6B85] hover:bg-[#9D8BA7]/5"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      await signOut()
-                      setCurrentView('landing')
-                    }}
-                    className="rounded-full text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
-                  >
-                    <LogOut className="size-3.5 mr-1" />
-                    Sign Out
-                  </Button>
-                </div>
+              /* ── View Mode - Centered ── */
+              <div className="flex flex-col items-center text-center">
+                <button
+                  onClick={handleEditStart}
+                  className="tap-feedback relative group mb-3"
+                >
+                  <div className="h-20 w-20 rounded-full flex items-center justify-center text-white font-bold text-2xl bg-[#9D8BA7] transition-transform group-active:scale-95">
+                    {profile.initials}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 size-7 rounded-full bg-background border-2 border-border flex items-center justify-center">
+                    <Camera className="size-3.5 text-muted-foreground" />
+                  </div>
+                </button>
+                <p className="text-xs text-muted-foreground mb-2">Tap to change</p>
+                <h3 className="font-bold text-lg text-foreground">
+                  {profile.name}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {profile.email}
+                </p>
               </div>
             )}
           </motion.div>
 
-          {/* ── Preferences Section ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05, duration: 0.25 }}
-            className="bg-card rounded-2xl p-6 shadow-sm border border-border"
-          >
-            <h3 className="font-bold text-sm mb-4 flex items-center gap-2 text-foreground">
-              <Bell className="size-4 text-[#9D8BA7]" />
-              Preferences
+          {/* Divider */}
+          <div className="h-px bg-border mx-4 sm:mx-0" />
+
+          {/* ── Notifications Section ── */}
+          <div className="sticky top-0 z-10 bg-background px-4 sm:px-0 pt-4 pb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Bell className="size-3.5" />
+              Notifications
             </h3>
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
+          </div>
+          <div className="px-4 sm:px-0">
+            <div className="flex items-center justify-between py-3 min-h-[48px] active:bg-muted/50 rounded-lg px-0 transition-colors">
+              <div className="flex items-center gap-3">
+                <MessageSquare className="size-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Daily summary notifications
+                    Daily summary
                   </p>
-                  <p className="text-xs mt-0.5 text-muted-foreground">
-                    Get a recap of your day&apos;s memories
+                  <p className="text-xs text-muted-foreground">
+                    Recap of your day&apos;s memories
                   </p>
                 </div>
-                <Switch checked={dailySummary} onCheckedChange={setDailySummary} />
               </div>
-              <div className="flex items-center justify-between">
+              <Switch checked={dailySummary} onCheckedChange={setDailySummary} />
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex items-center justify-between py-3 min-h-[48px] active:bg-muted/50 rounded-lg px-0 transition-colors">
+              <div className="flex items-center gap-3">
+                <Bell className="size-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     Weekly recap email
                   </p>
-                  <p className="text-xs mt-0.5 text-muted-foreground">
-                    Receive a weekly digest every Sunday
+                  <p className="text-xs text-muted-foreground">
+                    Weekly digest every Sunday
                   </p>
                 </div>
-                <Switch checked={weeklyRecap} onCheckedChange={setWeeklyRecap} />
               </div>
-              <div className="flex items-center justify-between">
+              <Switch checked={weeklyRecap} onCheckedChange={setWeeklyRecap} />
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-border mx-4 sm:mx-0" />
+
+          {/* ── Appearance Section ── */}
+          <div className="sticky top-0 z-10 bg-background px-4 sm:px-0 pt-4 pb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Moon className="size-3.5" />
+              Appearance
+            </h3>
+          </div>
+          <div className="px-4 sm:px-0">
+            <div className="flex items-center justify-between py-3 min-h-[48px] active:bg-muted/50 rounded-lg px-0 transition-colors">
+              <div className="flex items-center gap-3">
+                <Moon className="size-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     Dark mode
                   </p>
-                  <p className="text-xs mt-0.5 text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Switch between light and dark theme
                   </p>
                 </div>
-                <Switch
-                  checked={darkMode}
-                  onCheckedChange={handleDarkModeToggle}
-                />
               </div>
+              <Switch
+                checked={darkMode}
+                onCheckedChange={handleDarkModeToggle}
+              />
             </div>
-          </motion.div>
+          </div>
 
-          {/* ── Memory Preferences ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.25 }}
-            className="bg-card rounded-2xl p-6 shadow-sm border border-border"
-          >
-            <h3 className="font-bold text-sm mb-4 flex items-center gap-2 text-foreground">
-              <Cpu className="size-4 text-[#9D8BA7]" />
+          {/* Divider */}
+          <div className="h-px bg-border mx-4 sm:mx-0" />
+
+          {/* ── Memory Preferences Section ── */}
+          <div className="sticky top-0 z-10 bg-background px-4 sm:px-0 pt-4 pb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Cpu className="size-3.5" />
               Memory Preferences
             </h3>
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
+          </div>
+          <div className="px-4 sm:px-0">
+            <div className="flex items-center justify-between py-3 min-h-[48px] active:bg-muted/50 rounded-lg px-0 transition-colors">
+              <div className="flex items-center gap-3">
+                <Cpu className="size-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     Default capture type
                   </p>
-                  <p className="text-xs mt-0.5 text-muted-foreground">
-                    Opens first when you capture a memory
+                  <p className="text-xs text-muted-foreground">
+                    Opens first when you capture
                   </p>
                 </div>
-                <Select
-                  value={defaultCapture}
-                  onValueChange={(v) => setDefaultCapture(v as CaptureTab)}
-                >
-                  <SelectTrigger className="w-[110px] rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="voice">Voice</SelectItem>
-                    <SelectItem value="link">Link</SelectItem>
-                    <SelectItem value="image">Image</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-              <div className="flex items-center justify-between">
+              <Select
+                value={defaultCapture}
+                onValueChange={(v) => setDefaultCapture(v as CaptureTab)}
+              >
+                <SelectTrigger className="w-[110px] rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="voice">Voice</SelectItem>
+                  <SelectItem value="link">Link</SelectItem>
+                  <SelectItem value="image">Image</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex items-center justify-between py-3 min-h-[48px] active:bg-muted/50 rounded-lg px-0 transition-colors">
+              <div className="flex items-center gap-3">
+                <Tag className="size-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     Auto-tagging
                   </p>
-                  <p className="text-xs mt-0.5 text-muted-foreground">
-                    Let AI automatically tag your memories
+                  <p className="text-xs text-muted-foreground">
+                    Let AI automatically tag memories
                   </p>
                 </div>
-                <Switch checked={autoTagging} onCheckedChange={setAutoTagging} />
               </div>
+              <Switch checked={autoTagging} onCheckedChange={setAutoTagging} />
             </div>
-          </motion.div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-border mx-4 sm:mx-0" />
 
           {/* ── Subscription Section ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.25 }}
-            className="bg-card rounded-2xl p-6 shadow-sm border border-border"
-          >
-            <h3 className="font-bold text-sm mb-4 flex items-center gap-2 text-foreground">
-              <Sparkles className="size-4 text-[#9D8BA7]" />
+          <div className="sticky top-0 z-10 bg-background px-4 sm:px-0 pt-4 pb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Sparkles className="size-3.5" />
               Subscription
             </h3>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold text-foreground">
-                    {user?.plan === 'pro' ? 'Bloom (Pro)' : 'Seed (Free)'}
+          </div>
+          <div className="px-4 sm:px-0">
+            <div className="flex items-center justify-between py-3 min-h-[48px]">
+              <div className="flex items-center gap-3">
+                <Sparkles className="size-4 text-[#9D8BA7]" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground">
+                      {user?.plan === 'pro' ? 'Bloom (Pro)' : 'Seed (Free)'}
+                    </p>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#9D8BA7]/10 text-[#9D8BA7]">
+                      Current
+                    </span>
+                  </div>
+                  <p className="text-xs mt-0.5 text-muted-foreground">
+                    {user?.plan === 'pro'
+                      ? `${memories.length} memories · Unlimited`
+                      : `${memories.length} out of 50 memories`}
                   </p>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#9D8BA7]/10 text-[#9D8BA7]">
-                    Current
-                  </span>
                 </div>
-                <p className="text-xs mt-0.5 text-muted-foreground">
-                  {user?.plan === 'pro'
-                    ? `${memories.length} memories · Unlimited`
-                    : `${memories.length} out of 50 memories`}
-                </p>
               </div>
             </div>
             {user?.plan !== 'pro' && (
-              <div className="mt-4 p-4 rounded-xl bg-[#9D8BA7]/5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Crown className="size-4 text-[#9D8BA7]" />
-                    <div>
-                      <p className="text-sm font-bold text-foreground">
-                        Bloom
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Unlimited memories, AI insights, priority support
-                      </p>
-                    </div>
+              <div className="mt-2 p-4 rounded-xl bg-[#9D8BA7]/5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Crown className="size-4 text-[#9D8BA7] shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">
+                      Bloom
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Unlimited memories, AI insights, priority support
+                    </p>
                   </div>
-                  <Button
-                    className="rounded-full text-xs shadow-sm bg-[#9D8BA7] hover:bg-[#7A6B85] text-white"
-                    size="sm"
-                    onClick={handleBloomUpgrade}
-                  >
-                    $5.99/mo
-                  </Button>
                 </div>
+                <Button
+                  className="rounded-full text-xs shadow-sm bg-[#9D8BA7] hover:bg-[#7A6B85] text-white shrink-0"
+                  size="sm"
+                  onClick={handleBloomUpgrade}
+                >
+                  $5.99/mo
+                </Button>
               </div>
             )}
-          </motion.div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-border mx-4 sm:mx-0" />
+
+          {/* ── Logout Button ── */}
+          <div className="px-4 sm:px-0 py-4">
+            <button
+              onClick={handleLogout}
+              className="tap-feedback w-full flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors text-sm font-medium"
+            >
+              <LogOut className="size-4" />
+              Sign Out
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-border mx-4 sm:mx-0" />
 
           {/* ── Danger Zone ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.25 }}
-            className="bg-card rounded-2xl p-6 shadow-sm border border-red-200/50"
-          >
-            <h3 className="font-bold text-sm mb-4 flex items-center gap-2 text-red-600">
-              <Trash2 className="size-4" />
+          <div className="sticky top-0 z-10 bg-background px-4 sm:px-0 pt-4 pb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-red-500 flex items-center gap-2">
+              <Trash2 className="size-3.5" />
               Danger Zone
             </h3>
-            <div className="space-y-3">
-              <Button
-                variant="outline"
-                onClick={handleExport}
-                disabled={isExporting}
-                className="w-full rounded-xl justify-start gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                size="sm"
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Preparing export...
-                  </>
-                ) : (
-                  <>
-                    <Download className="size-4" />
-                    Export all memories
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl justify-start gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                size="sm"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="size-4" />
-                Delete account
-              </Button>
-            </div>
-          </motion.div>
+          </div>
+          <div className="px-4 sm:px-0 space-y-2 pb-8">
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="tap-feedback w-full flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl border border-red-200 text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors text-sm font-medium disabled:opacity-50"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Preparing export...
+                </>
+              ) : (
+                <>
+                  <Download className="size-4" />
+                  Export all memories
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
+              className="tap-feedback w-full flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl border border-red-200 text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors text-sm font-medium"
+            >
+              <Trash2 className="size-4" />
+              Delete account
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ── Delete Account Confirmation Dialog ── */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-5 text-red-500" />
@@ -517,11 +548,11 @@ export function Settings() {
               proceed?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-row gap-2">
+            <AlertDialogCancel className="flex-1 min-h-[44px]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAccount}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="flex-1 min-h-[44px] bg-red-600 hover:bg-red-700 text-white"
             >
               Yes, delete my account
             </AlertDialogAction>
