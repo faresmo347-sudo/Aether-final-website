@@ -947,7 +947,16 @@ function AppContent() {
    ═══════════════════════════════════════════════════════════════ */
 
 export default function Home() {
-  const { currentView, setCurrentView } = useAetherStore()
+  const { currentView, setCurrentView, darkMode } = useAetherStore()
+
+  // Initialize dark mode from store on mount
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [darkMode])
 
   const handleEnterApp = useCallback(() => {
     setCurrentView('dashboard')

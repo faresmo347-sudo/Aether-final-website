@@ -33,7 +33,7 @@ const typeIconMap: Record<MemoryType, typeof FileText> = {
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="bg-white rounded-2xl rounded-bl-md px-5 py-3.5 border border-gray-100 shadow-sm">
+      <div className="bg-card rounded-2xl rounded-bl-md px-5 py-3.5 border border-border shadow-sm">
         <div className="flex items-center gap-2 mb-2">
           <div className="h-5 w-5 rounded-full bg-gradient-to-br from-[#9D8BA7] to-[#6D597A] flex items-center justify-center">
             <Brain size={10} className="text-white" />
@@ -66,14 +66,14 @@ function TypingIndicator() {
 function InlineMemoryCard({ memory }: { memory: { id: string; title: string; content: string; type: MemoryType } }) {
   const Icon = typeIconMap[memory.type]
   return (
-    <div className="rounded-xl border border-gray-100 bg-[#FFFAF5] p-3 mt-2 hover:border-[#9D8BA7]/20 transition-all duration-300">
+    <div className="rounded-xl border border-border bg-background p-3 mt-2 hover:border-[#9D8BA7]/20 transition-all duration-300">
       <div className="flex items-start gap-2.5">
         <div className="h-7 w-7 rounded-lg bg-[#9D8BA7]/8 flex items-center justify-center flex-shrink-0 mt-0.5">
           <Icon size={13} className="text-[#9D8BA7]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-[#1a1a2e] truncate">{memory.title}</p>
-          <p className="text-[11px] text-[#6c757d] line-clamp-2 mt-0.5 leading-relaxed">{memory.content}</p>
+          <p className="text-xs font-semibold text-foreground truncate">{memory.title}</p>
+          <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">{memory.content}</p>
         </div>
       </div>
     </div>
@@ -117,7 +117,7 @@ function ChatBubble({
       transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
       className="flex justify-start"
     >
-      <div className="bg-white rounded-2xl rounded-bl-md px-5 py-4 max-w-[90%] sm:max-w-[80%] border border-gray-100 shadow-sm">
+      <div className="bg-card rounded-2xl rounded-bl-md px-5 py-4 max-w-[90%] sm:max-w-[80%] border border-border shadow-sm">
         {/* Header */}
         <div className="flex items-center gap-2 mb-3">
           <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#9D8BA7] to-[#6D597A] flex items-center justify-center">
@@ -129,7 +129,7 @@ function ChatBubble({
         </div>
 
         {/* Answer text */}
-        <p className="text-sm text-[#1a1a2e] leading-relaxed">{message.content}</p>
+        <p className="text-sm text-foreground leading-relaxed">{message.content}</p>
 
         {/* Referenced memories */}
         {referencedMems.length > 0 && (
@@ -142,7 +142,7 @@ function ChatBubble({
 
         {/* Sources tag */}
         {message.sourcesCount && message.sourcesCount > 0 && (
-          <div className="mt-3 pt-2 border-t border-gray-50">
+          <div className="mt-3 pt-2 border-t border-border">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#9D8BA7]/70">
               <FileText size={10} />
               Sources: {message.sourcesCount} memories
@@ -225,9 +225,9 @@ export function AskAether() {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#FFFAF5]">
+    <div className="flex flex-col h-[100dvh] bg-background">
       {/* ── Header ── */}
-      <div className="flex-shrink-0 px-4 sm:px-6 pt-6 pb-4 border-b border-gray-100 bg-[#FFFAF5]/80 backdrop-blur-sm">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-6 pb-4 border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
             <motion.div
@@ -238,8 +238,8 @@ export function AskAether() {
               <Brain size={20} className="text-white" />
             </motion.div>
             <div>
-              <h1 className="text-xl font-bold text-[#1a1a2e]">Ask Aether</h1>
-              <p className="text-xs text-[#6c757d]">
+              <h1 className="text-xl font-bold text-foreground">Ask Aether</h1>
+              <p className="text-xs text-muted-foreground">
                 Ask anything about your memories in natural language
               </p>
             </div>
@@ -258,7 +258,7 @@ export function AskAether() {
               transition={{ duration: 0.5 }}
               className="space-y-4"
             >
-              <p className="text-center text-sm text-[#6c757d] mb-2">Try asking...</p>
+              <p className="text-center text-sm text-muted-foreground mb-2">Try asking...</p>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                 {starterQuestions.map((question, i) => (
                   <motion.button
@@ -267,7 +267,7 @@ export function AskAether() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 + i * 0.1, duration: 0.4 }}
                     onClick={() => handleStarterClick(question)}
-                    className="text-left px-4 py-3 rounded-2xl border border-[#9D8BA7]/15 bg-white text-sm text-[#1a1a2e] hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/30 transition-all duration-300 group shadow-sm"
+                    className="text-left px-4 py-3 rounded-2xl border border-[#9D8BA7]/15 bg-card text-sm text-foreground hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/30 transition-all duration-300 group shadow-sm"
                   >
                     <span className="text-[#9D8BA7] mr-1.5">&ldquo;</span>
                     {question.replace(/^"|"$/g, '')}
@@ -293,7 +293,7 @@ export function AskAether() {
       </div>
 
       {/* ── Input Bar ── */}
-      <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
+      <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-t border-border bg-card/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">
@@ -310,7 +310,7 @@ export function AskAether() {
                 }}
                 placeholder="Ask Aether anything..."
                 disabled={isChatThinking}
-                className="w-full bg-[#FFFAF5] rounded-2xl border border-gray-100 px-5 py-3.5 text-sm text-[#1a1a2e] placeholder:text-[#6c757d]/50 focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all duration-300 disabled:opacity-50 shadow-sm"
+                className="w-full bg-background rounded-2xl border border-border px-5 py-3.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all duration-300 disabled:opacity-50 shadow-sm"
               />
             </div>
             <Button
@@ -324,7 +324,7 @@ export function AskAether() {
             <Button
               variant="outline"
               size="icon"
-              className="h-11 w-11 rounded-2xl border-gray-200 text-[#6c757d] hover:text-[#9D8BA7] hover:border-[#9D8BA7]/20 hover:bg-[#9D8BA7]/5 transition-all duration-300"
+              className="h-11 w-11 rounded-2xl border-border text-muted-foreground hover:text-[#9D8BA7] hover:border-[#9D8BA7]/20 hover:bg-[#9D8BA7]/5 transition-all duration-300"
             >
               <Mic size={18} />
             </Button>

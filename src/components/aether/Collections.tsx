@@ -74,7 +74,7 @@ const formatDate = (dateStr: string) => {
 /* ─────────── Collections Component ─────────── */
 
 export function Collections() {
-  const { setCurrentView } = useAetherStore()
+  const { setCurrentView, setCollectionFilter } = useAetherStore()
   const [collections, setCollections] = useState<Collection[]>(mockCollections)
   const [createOpen, setCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -96,27 +96,29 @@ export function Collections() {
     setCreateOpen(false)
   }
 
-  const handleCollectionClick = (_collection: Collection) => {
+  const handleCollectionClick = (collection: Collection) => {
+    setCollectionFilter(collection.id)
     setCurrentView('dashboard')
   }
 
   const handleTagClick = () => {
+    setCollectionFilter(null)
     setCurrentView('dashboard')
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FFFAF5' }}>
+    <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1
-              className="text-2xl sm:text-3xl font-bold"
-              style={{ fontFamily: "'Playfair Display', serif", color: '#1a1a2e' }}
+              className="text-2xl sm:text-3xl font-bold text-foreground"
+              style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Collections
             </h1>
-            <p className="text-sm mt-1" style={{ color: '#1a1a2e', opacity: 0.5 }}>
+            <p className="text-sm mt-1 text-muted-foreground">
               Organize your memories by theme
             </p>
           </div>
@@ -140,7 +142,7 @@ export function Collections() {
               transition={{ delay: index * 0.05, duration: 0.3 }}
               whileHover={{ y: -2 }}
               onClick={() => handleCollectionClick(collection)}
-              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-50 hover:shadow-md hover:border-[#9D8BA7]/15 transition-all cursor-pointer group"
+              className="bg-card rounded-2xl p-5 shadow-sm border border-border hover:shadow-md hover:border-[#9D8BA7]/15 transition-all cursor-pointer group"
             >
               <div
                 className="h-10 w-10 rounded-xl flex items-center justify-center mb-3 transition-colors duration-300 group-hover:scale-110"
@@ -152,16 +154,13 @@ export function Collections() {
                   style={{ color: collection.color }}
                 />
               </div>
-              <h3
-                className="font-bold text-sm sm:text-base mb-1"
-                style={{ color: '#1a1a2e' }}
-              >
+              <h3 className="font-bold text-sm sm:text-base mb-1 text-foreground">
                 {collection.name}
               </h3>
-              <p className="text-xs" style={{ color: '#1a1a2e', opacity: 0.5 }}>
+              <p className="text-xs text-muted-foreground">
                 {collection.memoryCount} memories
               </p>
-              <p className="text-xs mt-1" style={{ color: '#1a1a2e', opacity: 0.4 }}>
+              <p className="text-xs mt-1 text-muted-foreground">
                 Updated {formatDate(collection.lastUpdated)}
               </p>
             </motion.div>
@@ -171,8 +170,8 @@ export function Collections() {
         {/* Tag Cloud Section */}
         <div>
           <h2
-            className="text-xl sm:text-2xl font-bold mb-4"
-            style={{ fontFamily: "'Playfair Display', serif", color: '#1a1a2e' }}
+            className="text-xl sm:text-2xl font-bold mb-4 text-foreground"
+            style={{ fontFamily: "'Playfair Display', serif" }}
           >
             Your Tags
           </h2>
@@ -186,23 +185,13 @@ export function Collections() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleTagClick}
-                className={`px-3 py-1.5 rounded-full transition-colors ${
+                className={`px-3 py-1.5 rounded-full transition-colors bg-[#9D8BA7]/8 text-foreground hover:bg-[#9D8BA7]/15 ${
                   tag.count >= 6
                     ? 'text-base'
                     : tag.count >= 4
                       ? 'text-sm'
                       : 'text-xs'
                 }`}
-                style={{
-                  backgroundColor: 'rgba(157, 139, 167, 0.08)',
-                  color: '#1a1a2e',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(157, 139, 167, 0.15)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(157, 139, 167, 0.08)'
-                }}
               >
                 {tag.name}
               </motion.button>
@@ -213,35 +202,29 @@ export function Collections() {
 
       {/* Create Collection Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md" style={{ backgroundColor: '#FFFAF5' }}>
+        <DialogContent className="sm:max-w-md bg-background">
           <DialogHeader>
             <DialogTitle
-              style={{ fontFamily: "'Playfair Display', serif", color: '#1a1a2e' }}
+              className="text-foreground"
+              style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Create Collection
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: '#1a1a2e' }}
-              >
+              <label className="block text-sm font-medium mb-1.5 text-foreground">
                 Name
               </label>
               <Input
                 placeholder="Enter collection name..."
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="rounded-xl"
-                style={{ borderColor: 'rgba(157, 139, 167, 0.3)' }}
+                className="rounded-xl border-[#9D8BA7]/30"
               />
             </div>
             <div>
-              <label
-                className="block text-sm font-medium mb-2"
-                style={{ color: '#1a1a2e' }}
-              >
+              <label className="block text-sm font-medium mb-2 text-foreground">
                 Choose an Icon
               </label>
               <div className="grid grid-cols-6 gap-2">
@@ -254,19 +237,18 @@ export function Collections() {
                       onClick={() => setSelectedIcon(opt.key)}
                       className={`p-2.5 rounded-xl flex items-center justify-center transition-all duration-200 ${
                         isSelected
-                          ? 'scale-110 shadow-sm'
-                          : 'hover:bg-gray-100'
+                          ? 'scale-110 shadow-sm bg-[#9D8BA7]/12'
+                          : 'hover:bg-muted'
                       }`}
                       style={
                         isSelected
-                          ? { backgroundColor: 'rgba(157, 139, 167, 0.12)', outline: '2px solid #9D8BA7' }
+                          ? { outline: '2px solid #9D8BA7' }
                           : {}
                       }
                       title={opt.label}
                     >
                       <Icon
-                        className="size-5"
-                        style={{ color: isSelected ? '#9D8BA7' : '#1a1a2e50' }}
+                        className={`size-5 ${isSelected ? 'text-[#9D8BA7]' : 'text-muted-foreground'}`}
                       />
                     </button>
                   )

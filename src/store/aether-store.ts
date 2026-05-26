@@ -2,6 +2,12 @@ import { create } from 'zustand'
 import type { AppView, Memory, CaptureTab, RecapView, ChatMessage } from '@/components/aether/types'
 import { mockMemories } from '@/components/aether/mock-data'
 
+export interface UserProfile {
+  name: string
+  email: string
+  initials: string
+}
+
 interface AetherState {
   // Navigation
   currentView: AppView
@@ -26,6 +32,10 @@ interface AetherState {
   activeFilter: string
   setActiveFilter: (f: string) => void
 
+  // Collection Filter
+  collectionFilter: string | null
+  setCollectionFilter: (id: string | null) => void
+
   // Chat
   chatMessages: ChatMessage[]
   addChatMessage: (msg: ChatMessage) => void
@@ -45,6 +55,12 @@ interface AetherState {
   setAutoTagging: (v: boolean) => void
   defaultCapture: CaptureTab
   setDefaultCapture: (v: CaptureTab) => void
+  darkMode: boolean
+  setDarkMode: (v: boolean) => void
+
+  // Profile
+  profile: UserProfile
+  setProfile: (p: UserProfile) => void
 }
 
 export const useAetherStore = create<AetherState>((set) => ({
@@ -71,6 +87,10 @@ export const useAetherStore = create<AetherState>((set) => ({
   activeFilter: 'All',
   setActiveFilter: (f) => set({ activeFilter: f }),
 
+  // Collection Filter
+  collectionFilter: null,
+  setCollectionFilter: (id) => set({ collectionFilter: id }),
+
   // Chat
   chatMessages: [],
   addChatMessage: (msg) => set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
@@ -90,4 +110,13 @@ export const useAetherStore = create<AetherState>((set) => ({
   setAutoTagging: (v) => set({ autoTagging: v }),
   defaultCapture: 'text',
   setDefaultCapture: (v) => set({ defaultCapture: v }),
+  darkMode: typeof window !== 'undefined' ? localStorage.getItem('aether-dark-mode') === 'true' : false,
+  setDarkMode: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('aether-dark-mode', String(v))
+    set({ darkMode: v })
+  },
+
+  // Profile
+  profile: { name: 'Alex Johnson', email: 'alex@aether.app', initials: 'AJ' },
+  setProfile: (p) => set({ profile: p }),
 }))

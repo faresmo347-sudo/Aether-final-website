@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain } from 'lucide-react'
+import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
+import { mockCollections } from '@/components/aether/mock-data'
 import type { Memory, MemoryType } from '@/components/aether/types'
 
 // ---------- helpers ----------
@@ -46,7 +47,32 @@ function formatDate(iso: string): string {
 // ---------- sub-components ----------
 
 function FilterBar() {
-  const { activeFilter, setActiveFilter } = useAetherStore()
+  const { activeFilter, setActiveFilter, collectionFilter, setCollectionFilter } = useAetherStore()
+
+  // When a collection filter is active, show collection context instead of type filters
+  const activeCollection = useMemo(
+    () => (collectionFilter ? mockCollections.find((c) => c.id === collectionFilter) : null),
+    [collectionFilter]
+  )
+
+  if (activeCollection) {
+    return (
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setCollectionFilter(null)}
+          className="flex items-center gap-1.5 text-sm text-[#9D8BA7] hover:text-[#7A6B85] transition-colors font-medium"
+        >
+          <ArrowLeft className="size-4" />
+          All memories
+        </button>
+        <div className="h-4 w-px bg-border" />
+        <div className="flex items-center gap-2 bg-[#9D8BA7]/10 text-[#9D8BA7] text-sm px-3 py-1.5 rounded-full font-medium">
+          <FolderOpen className="size-3.5" />
+          {activeCollection.name}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -57,7 +83,7 @@ function FilterBar() {
           className={`text-sm px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 ${
             activeFilter === f
               ? 'bg-[#9D8BA7] text-white shadow-sm'
-              : 'bg-white text-[#1a1a2e]/60 hover:bg-gray-50'
+              : 'bg-card text-muted-foreground hover:bg-muted'
           }`}
         >
           {f}
@@ -82,7 +108,7 @@ function MemoryCard({ memory }: { memory: Memory }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
       onClick={handleClick}
-      className="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer group"
+      className="w-full text-left bg-card rounded-2xl p-4 shadow-sm border border-border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer group"
     >
       <div className="flex items-start gap-3">
         {/* icon */}
@@ -92,10 +118,10 @@ function MemoryCard({ memory }: { memory: Memory }) {
 
         {/* body */}
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-[#1a1a2e] text-sm leading-snug truncate group-hover:text-[#9D8BA7] transition-colors">
+          <h3 className="font-bold text-foreground text-sm leading-snug truncate group-hover:text-[#9D8BA7] transition-colors">
             {memory.title}
           </h3>
-          <p className="text-[#1a1a2e]/50 text-xs mt-1 line-clamp-2 leading-relaxed">
+          <p className="text-muted-foreground text-xs mt-1 line-clamp-2 leading-relaxed">
             {memory.content}
           </p>
 
@@ -114,7 +140,7 @@ function MemoryCard({ memory }: { memory: Memory }) {
             </div>
 
             {/* date */}
-            <span className="text-[10px] text-[#1a1a2e]/35 whitespace-nowrap shrink-0">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
               {formatDate(memory.createdAt)}
             </span>
           </div>
@@ -124,7 +150,7 @@ function MemoryCard({ memory }: { memory: Memory }) {
   )
 }
 
-function EmptyState() {
+function EmptyState({ collectionName }: { collectionName?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -132,13 +158,23 @@ function EmptyState() {
       className="flex flex-col items-center justify-center py-20 px-6 text-center"
     >
       <div className="h-16 w-16 rounded-2xl bg-[#9D8BA7]/10 flex items-center justify-center mb-4">
-        <Brain className="size-8 text-[#9D8BA7]" />
+        {collectionName ? (
+          <FolderOpen className="size-8 text-[#9D8BA7]" />
+        ) : (
+          <Brain className="size-8 text-[#9D8BA7]" />
+        )}
       </div>
-      <h3 className="font-serif text-lg font-semibold text-[#1a1a2e]">
-        No memories here yet
+      <h3 className="font-serif text-lg font-semibold text-foreground">
+        {collectionName
+          ? `No memories in ${collectionName} yet`
+          : 'No memories here yet'
+        }
       </h3>
-      <p className="text-sm text-[#1a1a2e]/50 mt-1 max-w-xs">
-        Start capturing to fill your second brain
+      <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+        {collectionName
+          ? `Start capturing memories to this collection and they'll appear here. Tap the + button to add your first one.`
+          : 'Start capturing to fill your second brain'
+        }
       </p>
     </motion.div>
   )
@@ -250,17 +286,17 @@ function QuickCaptureModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="bg-white rounded-2xl max-w-lg w-full mx-4 overflow-hidden shadow-xl"
+            className="bg-card rounded-2xl max-w-lg w-full mx-4 overflow-hidden shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-2">
-              <h2 className="font-serif text-lg font-semibold text-[#1a1a2e]">
+              <h2 className="font-serif text-lg font-semibold text-foreground">
                 Quick Capture
               </h2>
               <button
                 onClick={handleClose}
-                className="size-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-[#1a1a2e]/50"
+                className="size-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground"
               >
                 <X className="size-4" />
               </button>
@@ -275,7 +311,7 @@ function QuickCaptureModal() {
                   className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full transition-all duration-200 ${
                     activeCaptureTab === tab.key
                       ? 'bg-[#9D8BA7] text-white'
-                      : 'bg-gray-50 text-[#1a1a2e]/50 hover:bg-gray-100'
+                      : 'bg-muted text-muted-foreground hover:bg-muted'
                   }`}
                 >
                   {tab.icon}
@@ -297,7 +333,7 @@ function QuickCaptureModal() {
                     value={textContent}
                     onChange={(e) => setTextContent(e.target.value)}
                     placeholder="What's on your mind?"
-                    className="w-full h-36 resize-none rounded-xl border border-gray-100 bg-[#FFFAF5] px-4 py-3 text-sm text-[#1a1a2e] placeholder:text-[#1a1a2e]/30 focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
+                    className="w-full h-36 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
                   />
                 </motion.div>
               )}
@@ -314,7 +350,6 @@ function QuickCaptureModal() {
                     onClick={() => {
                       if (!isRecording) {
                         setIsRecording(true)
-                        // Mock: auto-stop after 2s and show transcription
                         setTimeout(() => {
                           setIsRecording(false)
                           setVoiceTranscript(
@@ -359,10 +394,10 @@ function QuickCaptureModal() {
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-4 w-full rounded-xl border border-gray-100 bg-[#FFFAF5] p-3"
+                      className="mt-4 w-full rounded-xl border border-border bg-background p-3"
                     >
-                      <p className="text-xs text-[#1a1a2e]/40 mb-1">Transcription</p>
-                      <p className="text-sm text-[#1a1a2e] leading-relaxed">
+                      <p className="text-xs text-muted-foreground mb-1">Transcription</p>
+                      <p className="text-sm text-foreground leading-relaxed">
                         {voiceTranscript}
                       </p>
                     </motion.div>
@@ -385,23 +420,23 @@ function QuickCaptureModal() {
                       setLinkPreview(e.target.value.length > 5)
                     }}
                     placeholder="Paste any link..."
-                    className="w-full rounded-xl border border-gray-100 bg-[#FFFAF5] px-4 py-3 text-sm text-[#1a1a2e] placeholder:text-[#1a1a2e]/30 focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
                   />
 
                   {linkPreview && linkUrl.length > 5 && (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-3 rounded-xl border border-gray-100 bg-[#FFFAF5] p-3 flex gap-3"
+                      className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3"
                     >
                       <div className="size-14 rounded-lg bg-[#9D8BA7]/10 flex items-center justify-center shrink-0">
                         <Link2 className="size-5 text-[#9D8BA7]" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#1a1a2e] truncate">
+                        <p className="text-sm font-semibold text-foreground truncate">
                           Article Preview
                         </p>
-                        <p className="text-xs text-[#1a1a2e]/50 mt-0.5 line-clamp-2">
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           A preview of the content from the link you saved. The full
                           article will be summarized and tagged automatically.
                         </p>
@@ -419,9 +454,9 @@ function QuickCaptureModal() {
                   transition={{ duration: 0.2 }}
                 >
                   {!imagePreview ? (
-                    <label className="flex flex-col items-center justify-center h-36 rounded-xl border-2 border-dashed border-gray-200 bg-[#FFFAF5] cursor-pointer hover:border-[#9D8BA7]/40 transition-colors">
+                    <label className="flex flex-col items-center justify-center h-36 rounded-xl border-2 border-dashed border-border bg-background cursor-pointer hover:border-[#9D8BA7]/40 transition-colors">
                       <Upload className="size-8 text-[#9D8BA7]/50 mb-2" />
-                      <p className="text-sm text-[#1a1a2e]/40">
+                      <p className="text-sm text-muted-foreground">
                         Drop an image or click to upload
                       </p>
                       <input
@@ -429,7 +464,6 @@ function QuickCaptureModal() {
                         accept="image/*"
                         className="hidden"
                         onChange={() => {
-                          // Mock upload — show placeholder
                           setImagePreview('mock')
                         }}
                       />
@@ -446,7 +480,7 @@ function QuickCaptureModal() {
                       </div>
                       <button
                         onClick={() => setImagePreview(null)}
-                        className="absolute top-2 right-2 size-6 rounded-full bg-white/80 flex items-center justify-center text-[#1a1a2e]/40 hover:text-red-500 transition-colors"
+                        className="absolute top-2 right-2 size-6 rounded-full bg-card/80 flex items-center justify-center text-muted-foreground hover:text-red-500 transition-colors"
                       >
                         <X className="size-3" />
                       </button>
@@ -461,7 +495,6 @@ function QuickCaptureModal() {
               <Button
                 onClick={handleSave}
                 className="w-full bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl h-11 text-sm font-medium transition-colors"
-                style={{ backgroundColor: undefined }}
               >
                 <Plus className="size-4 mr-1" />
                 Save Memory
@@ -477,12 +510,24 @@ function QuickCaptureModal() {
 // ---------- main Dashboard ----------
 
 export default function Dashboard() {
-  const { memories, activeFilter } = useAetherStore()
+  const { memories, activeFilter, collectionFilter } = useAetherStore()
 
+  // Get the active collection name for empty state messaging
+  const activeCollection = useMemo(
+    () => (collectionFilter ? mockCollections.find((c) => c.id === collectionFilter) : null),
+    [collectionFilter]
+  )
+
+  // Filter by type
   const filterType = FILTER_MAP[activeFilter]
-  const filteredMemories = filterType
+  let filteredMemories = filterType
     ? memories.filter((m) => m.type === filterType)
     : memories
+
+  // Filter by collection (if set)
+  if (collectionFilter) {
+    filteredMemories = filteredMemories.filter((m) => m.collectionId === collectionFilter)
+  }
 
   // Sort chronologically (newest first)
   const sortedMemories = [...filteredMemories].sort(
@@ -507,7 +552,7 @@ export default function Dashboard() {
             </AnimatePresence>
           </motion.div>
         ) : (
-          <EmptyState />
+          <EmptyState collectionName={activeCollection?.name} />
         )}
       </div>
 

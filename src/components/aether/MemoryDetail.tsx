@@ -61,17 +61,17 @@ function RelatedMemoryCard({ memory, onClick }: { memory: Memory; onClick: () =>
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md hover:border-[#9D8BA7]/20 transition-all duration-300 group"
+      className="w-full text-left rounded-2xl border border-border bg-card p-4 shadow-sm hover:shadow-md hover:border-[#9D8BA7]/20 transition-all duration-300 group"
     >
       <div className="flex items-start gap-3">
         <div className="h-9 w-9 rounded-xl bg-[#9D8BA7]/8 flex items-center justify-center flex-shrink-0 group-hover:bg-[#9D8BA7]/15 transition-colors duration-300">
           <Icon size={16} className="text-[#9D8BA7]" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-[#1a1a2e] truncate group-hover:text-[#9D8BA7] transition-colors duration-300">
+          <h4 className="text-sm font-semibold text-foreground truncate group-hover:text-[#9D8BA7] transition-colors duration-300">
             {memory.title}
           </h4>
-          <p className="text-xs text-[#6c757d] line-clamp-2 mt-1 leading-relaxed">
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
             {memory.content}
           </p>
         </div>
@@ -94,10 +94,10 @@ function DeleteDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl border border-gray-100 bg-[#FFFAF5]">
+      <DialogContent className="sm:max-w-md rounded-2xl border border-border bg-background">
         <DialogHeader>
-          <DialogTitle className="text-[#1a1a2e]">Delete Memory</DialogTitle>
-          <DialogDescription className="text-[#6c757d]">
+          <DialogTitle className="text-foreground">Delete Memory</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Are you sure you want to delete &ldquo;{memoryTitle}&rdquo;? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
@@ -105,7 +105,7 @@ function DeleteDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl border-gray-200 text-[#1a1a2e] hover:bg-gray-50"
+            className="rounded-xl border-border text-foreground hover:bg-muted"
           >
             Cancel
           </Button>
@@ -199,8 +199,8 @@ export function MemoryDetail() {
         <div className="h-16 w-16 rounded-2xl bg-[#9D8BA7]/10 flex items-center justify-center mb-4">
           <Brain size={28} className="text-[#9D8BA7]" />
         </div>
-        <h2 className="text-xl font-semibold text-[#1a1a2e] mb-2">Memory not found</h2>
-        <p className="text-sm text-[#6c757d] mb-6 text-center">
+        <h2 className="text-xl font-semibold text-foreground mb-2">Memory not found</h2>
+        <p className="text-sm text-muted-foreground mb-6 text-center">
           This memory may have been deleted or doesn&apos;t exist.
         </p>
         <Button
@@ -224,19 +224,19 @@ export function MemoryDetail() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -40 }}
       transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="min-h-screen bg-[#FFFAF5]"
+      className="min-h-screen bg-background"
     >
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {/* ── Back Button ── */}
         <button
           onClick={handleBack}
-          className="flex items-center gap-2 text-sm font-medium text-[#6c757d] hover:text-[#9D8BA7] transition-colors duration-300 mb-6 group"
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-[#9D8BA7] transition-colors duration-300 mb-6 group"
         >
           <ArrowLeft size={18} className="transition-transform duration-300 group-hover:-translate-x-1" />
           Back to Dashboard
         </button>
 
-        {/* ── Memory Header ── */}
+        {/* ── Memory HEADER ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -247,7 +247,7 @@ export function MemoryDetail() {
               <TypeIcon size={22} className="text-[#9D8BA7]" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a2e] leading-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
                 {memory.title}
               </h1>
             </div>
@@ -255,7 +255,7 @@ export function MemoryDetail() {
 
           {/* ── Metadata Row ── */}
           <div className="flex flex-wrap items-center gap-3 mt-4 mb-6">
-            <div className="flex items-center gap-1.5 text-sm text-[#6c757d]">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Calendar size={14} />
               <span>{formatDate(memory.createdAt)}</span>
             </div>
@@ -293,14 +293,14 @@ export function MemoryDetail() {
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="min-h-[180px] rounded-2xl border-gray-100 bg-white text-[#1a1a2e] text-base leading-relaxed focus-visible:border-[#9D8BA7]/30 focus-visible:ring-[#9D8BA7]/10 resize-none"
+                className="min-h-[180px] rounded-2xl border-border bg-card text-foreground text-base leading-relaxed focus-visible:border-[#9D8BA7]/30 focus-visible:ring-[#9D8BA7]/10 resize-none"
               />
               <div className="flex gap-2 justify-end">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setIsEditing(false)}
-                  className="rounded-xl border-gray-200"
+                  className="rounded-xl border-border"
                 >
                   <X size={14} className="mr-1" />
                   Cancel
@@ -319,8 +319,8 @@ export function MemoryDetail() {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl bg-white border border-gray-100 p-6 shadow-sm">
-              <p className="text-[#1a1a2e] text-base leading-relaxed whitespace-pre-wrap">
+            <div className="rounded-2xl bg-card border border-border p-6 shadow-sm">
+              <p className="text-foreground text-base leading-relaxed whitespace-pre-wrap">
                 {memory.content}
               </p>
             </div>
@@ -336,7 +336,7 @@ export function MemoryDetail() {
         >
           <div className="flex items-center gap-2 mb-3">
             <Tag size={14} className="text-[#9D8BA7]" />
-            <h3 className="text-sm font-semibold text-[#1a1a2e]">Tags</h3>
+            <h3 className="text-sm font-semibold text-foreground">Tags</h3>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {memory.tags.map((tag) => (
@@ -362,7 +362,7 @@ export function MemoryDetail() {
                   }}
                   placeholder="#new-tag"
                   autoFocus
-                  className="h-8 w-28 rounded-full border border-[#9D8BA7]/20 bg-white px-3 text-xs text-[#1a1a2e] placeholder:text-[#6c757d]/50 focus:outline-none focus:border-[#9D8BA7]/40 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all duration-300"
+                  className="h-8 w-28 rounded-full border border-[#9D8BA7]/20 bg-card px-3 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#9D8BA7]/40 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all duration-300"
                 />
                 <button
                   onClick={handleAddTag}
@@ -375,7 +375,7 @@ export function MemoryDetail() {
                     setShowTagInput(false)
                     setNewTag('')
                   }}
-                  className="h-7 w-7 rounded-full bg-gray-100 text-[#6c757d] flex items-center justify-center hover:bg-gray-200 transition-colors duration-300"
+                  className="h-7 w-7 rounded-full bg-muted text-muted-foreground flex items-center justify-center hover:bg-muted/80 transition-colors duration-300"
                 >
                   <X size={12} />
                 </button>
@@ -383,7 +383,7 @@ export function MemoryDetail() {
             ) : (
               <button
                 onClick={() => setShowTagInput(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium text-[#6c757d] border border-dashed border-gray-200 hover:border-[#9D8BA7]/30 hover:text-[#9D8BA7] hover:bg-[#9D8BA7]/5 transition-all duration-300"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground border border-dashed border-border hover:border-[#9D8BA7]/30 hover:text-[#9D8BA7] hover:bg-[#9D8BA7]/5 transition-all duration-300"
               >
                 <Plus size={12} />
                 Add tag
@@ -400,14 +400,14 @@ export function MemoryDetail() {
             transition={{ delay: 0.25, duration: 0.4 }}
             className="mb-8"
           >
-            <div className="rounded-2xl bg-white border border-gray-100 p-6 shadow-sm border-l-4 border-l-[#9D8BA7]">
+            <div className="rounded-2xl bg-card border border-border p-6 shadow-sm border-l-4 border-l-[#9D8BA7]">
               <div className="flex items-center gap-2 mb-3">
                 <Brain size={16} className="text-[#9D8BA7]" />
                 <span className="text-xs font-semibold text-[#9D8BA7] uppercase tracking-wider">
                   Aether&apos;s Understanding
                 </span>
               </div>
-              <p className="text-sm text-[#1a1a2e] leading-relaxed">
+              <p className="text-sm text-foreground leading-relaxed">
                 {memory.aiSummary}
               </p>
             </div>
@@ -422,7 +422,7 @@ export function MemoryDetail() {
             transition={{ delay: 0.3, duration: 0.4 }}
             className="mb-8"
           >
-            <h3 className="text-sm font-semibold text-[#1a1a2e] mb-4">Related Memories</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4">Related Memories</h3>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {relatedMemories.map((relMemory) => (
                 <RelatedMemoryCard
@@ -445,12 +445,12 @@ export function MemoryDetail() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.4 }}
-          className="flex flex-wrap gap-3 pt-4 border-t border-gray-100"
+          className="flex flex-wrap gap-3 pt-4 border-t border-border"
         >
           <Button
             onClick={handleShare}
             variant="outline"
-            className="rounded-xl border-gray-200 text-[#1a1a2e] hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/20 hover:text-[#9D8BA7] transition-all duration-300"
+            className="rounded-xl border-border text-foreground hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/20 hover:text-[#9D8BA7] transition-all duration-300"
           >
             <Share2 size={16} className="mr-2" />
             Share
@@ -459,10 +459,10 @@ export function MemoryDetail() {
             <Button
               onClick={handleEdit}
               variant="outline"
-              className={`rounded-xl border-gray-200 transition-all duration-300 ${
+              className={`rounded-xl border-border transition-all duration-300 ${
                 isEditing
                   ? 'bg-[#9D8BA7]/10 border-[#9D8BA7]/20 text-[#9D8BA7]'
-                  : 'text-[#1a1a2e] hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/20 hover:text-[#9D8BA7]'
+                  : 'text-foreground hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/20 hover:text-[#9D8BA7]'
               }`}
             >
               {isEditing ? (
@@ -481,7 +481,7 @@ export function MemoryDetail() {
           <Button
             onClick={() => setDeleteDialogOpen(true)}
             variant="outline"
-            className="rounded-xl border-gray-200 text-red-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300"
+            className="rounded-xl border-border text-red-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300"
           >
             <Trash2 size={16} className="mr-2" />
             Delete

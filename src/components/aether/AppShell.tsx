@@ -50,8 +50,8 @@ function SidebarNavItem({
         text-sm font-medium transition-all duration-200
         ${
           isActive
-            ? 'bg-[#9D8BA7]/10 text-[#9D8BA7]'
-            : 'text-[#1a1a2e]/50 hover:text-[#1a1a2e] hover:bg-[#9D8BA7]/5'
+            ? 'bg-[#9D8BA7]/10 text-[#9D8BA7] dark:bg-[#9D8BA7]/20 dark:text-[#B8A8C4]'
+            : 'text-muted-foreground hover:text-foreground hover:bg-[#9D8BA7]/5 dark:hover:bg-[#9D8BA7]/10'
         }
       `}
       whileTap={{ scale: 0.97 }}
@@ -72,7 +72,7 @@ function SidebarNavItem({
       <Icon
         size={20}
         className={`flex-shrink-0 transition-colors duration-200 ${
-          isActive ? 'text-[#9D8BA7]' : 'text-[#1a1a2e]/40 group-hover:text-[#1a1a2e]/70'
+          isActive ? 'text-[#9D8BA7]' : 'text-muted-foreground group-hover:text-foreground'
         }`}
       />
       <span className="truncate">{item.label}</span>
@@ -101,7 +101,7 @@ function BottomNavItem({
         ${
           isActive
             ? 'text-[#9D8BA7]'
-            : 'text-[#1a1a2e]/40 active:text-[#1a1a2e]/60'
+            : 'text-muted-foreground active:text-foreground'
         }
       `}
       whileTap={{ scale: 0.9 }}
@@ -126,7 +126,7 @@ function BottomNavItem({
 
 /* ─────────── Main AppShell Component ─────────── */
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { currentView, setCurrentView, setCaptureModalOpen } = useAetherStore()
+  const { currentView, setCurrentView, setCaptureModalOpen, profile } = useAetherStore()
 
   // Determine which nav item is active based on current view
   const getActiveNavView = (): AppView => {
@@ -138,15 +138,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const activeNavView = getActiveNavView()
 
   return (
-    <div className="min-h-screen bg-[#FFFAF5] text-[#1a1a2e] flex">
+    <div className="min-h-screen bg-background text-foreground flex">
       {/* ──────── Left Sidebar (Desktop) ──────── */}
-      <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-100 fixed inset-y-0 left-0 z-40">
+      <aside className="hidden md:flex md:flex-col md:w-64 bg-card border-r border-border fixed inset-y-0 left-0 z-40">
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-6 border-b border-[#1a1a2e]/5">
+        <div className="flex items-center gap-3 px-5 py-6 border-b border-border">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center shadow-lg shadow-[#9D8BA7]/20">
             <Brain size={18} className="text-white" />
           </div>
-          <span className="font-serif text-xl font-bold text-[#1a1a2e] tracking-tight">
+          <span className="font-serif text-xl font-bold text-foreground tracking-tight">
             Aether
           </span>
         </div>
@@ -164,16 +164,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="px-4 py-4 border-t border-[#1a1a2e]/5">
+        <div className="px-4 py-4 border-t border-border">
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9 border border-[#9D8BA7]/20">
               <AvatarFallback className="bg-[#9D8BA7]/10 text-[#9D8BA7] text-sm font-semibold">
-                A
+                {profile.initials}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#1a1a2e] truncate">Aether User</p>
-              <p className="text-xs text-[#1a1a2e]/40 truncate">Bloom Plan</p>
+              <p className="text-sm font-medium text-foreground truncate">{profile.name}</p>
+              <p className="text-xs text-muted-foreground truncate">Bloom Plan</p>
             </div>
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* ──────── Main Content Area ──────── */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {/* ──────── Top Header ──────── */}
-        <header className="sticky top-0 z-30 bg-[#FFFAF5]/80 backdrop-blur-xl border-b border-[#1a1a2e]/5">
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
           <div className="flex items-center gap-4 px-4 md:px-6 h-14">
             {/* Mobile logo */}
             <div className="md:hidden flex items-center gap-2 flex-shrink-0">
@@ -194,7 +194,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {/* Search Bar */}
             <motion.button
               onClick={() => setCurrentView('ask-aether')}
-              className="flex-1 max-w-xl mx-auto flex items-center gap-3 bg-[#FFFAF5] border border-gray-100 rounded-full px-4 py-2 text-sm text-[#1a1a2e]/40 hover:border-[#9D8BA7]/30 hover:bg-white transition-all duration-300 group"
+              className="flex-1 max-w-xl mx-auto flex items-center gap-3 bg-background border border-border rounded-full px-4 py-2 text-sm text-muted-foreground hover:border-[#9D8BA7]/30 hover:bg-card transition-all duration-300 group"
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
             >
@@ -209,7 +209,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="hidden md:block flex-shrink-0">
               <Avatar className="h-8 w-8 border border-[#9D8BA7]/20 cursor-pointer hover:border-[#9D8BA7]/40 transition-colors duration-200">
                 <AvatarFallback className="bg-[#9D8BA7]/10 text-[#9D8BA7] text-xs font-semibold">
-                  A
+                  {profile.initials}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -247,7 +247,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </motion.button>
 
       {/* ──────── Bottom Navigation Bar (Mobile) ──────── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-[#1a1a2e]/5 safe-area-pb">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/90 backdrop-blur-xl border-t border-border safe-area-pb">
         <div className="flex items-center justify-around px-2 h-16" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           {navItems.map((item) => (
             <BottomNavItem
