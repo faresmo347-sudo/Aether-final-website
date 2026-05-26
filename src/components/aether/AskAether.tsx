@@ -329,7 +329,7 @@ export function AskAether() {
       </div>
 
       {/* Input Bar — fixed above bottom nav on mobile, sticky on desktop */}
-      <div className="fixed bottom-16 left-0 right-0 md:static z-30 bg-card/95 backdrop-blur-sm border-t border-border md:bg-card/80" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom,0px))] left-0 right-0 md:static z-30 bg-card/95 backdrop-blur-sm border-t border-border md:bg-card/80">
         <div className="md:max-w-3xl md:mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex-1 relative">
@@ -345,11 +345,12 @@ export function AskAether() {
                 }}
                 placeholder="Ask Aether anything..."
                 disabled={isChatThinking}
+                aria-label="Ask Aether a question"
                 className="w-full bg-background rounded-2xl border border-border px-4 sm:px-5 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all duration-300 disabled:opacity-50 shadow-sm min-h-[48px] resize-none"
               />
               {/* Microphone button inside input */}
               <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-[#9D8BA7] hover:bg-[#9D8BA7]/5 transition-colors duration-150 active:bg-[#9D8BA7]/10"
+                className="absolute right-3 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center text-muted-foreground hover:text-[#9D8BA7] hover:bg-[#9D8BA7]/5 transition-colors duration-150 active:bg-[#9D8BA7]/10"
                 aria-label="Voice input"
               >
                 <Mic size={18} />
@@ -359,6 +360,7 @@ export function AskAether() {
               onClick={handleSend}
               disabled={!input.trim() || isChatThinking}
               size="icon"
+              aria-label="Send message"
               className="h-12 w-12 sm:h-11 sm:w-11 rounded-2xl bg-[#9D8BA7] hover:bg-[#6D597A] text-white shadow-lg shadow-[#9D8BA7]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#9D8BA7]/30 disabled:opacity-40 disabled:shadow-none flex-shrink-0"
             >
               {isChatThinking ? (

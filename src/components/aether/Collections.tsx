@@ -16,6 +16,7 @@ import {
   Globe,
   Wrench,
   Heart,
+  FolderOpen,
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -157,10 +158,31 @@ export function Collections() {
         </div>
 
         {/* Collections Grid - 2 cols mobile, 3 cols desktop */}
-        {collections.length > 0 && collections.every((c) => c.memoryCount === 0) && (
-          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-            Save memories and assign them to collections to see them organized here
-          </p>
+        {collections.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="size-16 rounded-2xl flex items-center justify-center mb-4 bg-[#9D8BA7]/12">
+              <FolderOpen className="size-8" style={{ color: '#9D8BA7' }} />
+            </div>
+            <h3 className="text-lg font-bold text-foreground mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+              No collections yet
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-xs mb-6">
+              Create your first collection to organize your memories by theme
+            </p>
+            <Button
+              onClick={() => setCreateOpen(true)}
+              className="gap-2 w-full sm:w-auto min-h-[44px] bg-[#9D8BA7] hover:bg-[#9D8BA7]/90 text-white"
+            >
+              <Plus className="size-4" />
+              Create Collection
+            </Button>
+          </div>
+        ) : (
+          collections.every((c) => c.memoryCount === 0) && (
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+              Save memories and assign them to collections to see them organized here
+            </p>
+          )
         )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-10 px-0 sm:px-0">
           {collections.map((collection, index) => (
@@ -236,7 +258,8 @@ export function Collections() {
       {/* Mobile FAB - Create Collection */}
       <button
         onClick={() => setCreateOpen(true)}
-        className="md:hidden fixed bottom-24 right-4 h-14 w-14 rounded-full bg-[#9D8BA7] text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40 tap-feedback"
+        className="md:hidden fixed right-4 h-14 w-14 rounded-full bg-[#9D8BA7] text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40 tap-feedback"
+        style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
         aria-label="Create collection"
       >
         <Plus className="size-6" />

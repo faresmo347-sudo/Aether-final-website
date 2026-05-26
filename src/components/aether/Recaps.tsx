@@ -74,7 +74,19 @@ export function Recaps() {
     return memories.filter((m) => new Date(m.createdAt) >= startOfDay)
   }, [memories, today])
 
-  const recentMemories = memories.slice(0, 4)
+  const recentMemories = useMemo(() => {
+    const startOfDay = new Date(today)
+    startOfDay.setHours(0, 0, 0, 0)
+    return memories.filter((m) => new Date(m.createdAt) >= startOfDay).slice(0, 4)
+  }, [memories, today])
+
+  // Weekly memories — past 7 days
+  const weeklyMemories = useMemo(() => {
+    const sevenDaysAgo = new Date(today)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
+    return memories.filter((m) => new Date(m.createdAt) >= sevenDaysAgo)
+  }, [memories, today])
 
   // Derive top themes from real memories
   const topThemes = useMemo(() => {
@@ -506,7 +518,7 @@ export function Recaps() {
                       {topThemes.map((theme) => (
                         <span
                           key={theme.name}
-                          className="px-3 py-1.5 rounded-full text-sm font-medium min-h-[36px] flex items-center bg-[#9D8BA7]/10 text-foreground"
+                          className="px-3 py-1.5 rounded-full text-sm font-medium min-h-[44px] flex items-center bg-[#9D8BA7]/10 text-foreground"
                         >
                           {theme.name}
                           <span className="ml-1 opacity-50">({theme.count})</span>

@@ -76,13 +76,17 @@ export function Settings() {
   // Delete account dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
-  // ──── Dark mode: sync class on mount ────
+  // ──── Dark mode: sync class on mount AND read from localStorage ────
   useEffect(() => {
     const saved = localStorage.getItem('aether-dark-mode') === 'true'
     if (saved) {
       document.documentElement.classList.add('dark')
+      // Also sync the store state if it's out of sync
+      if (!darkMode) {
+        setDarkMode(true)
+      }
     }
-  }, [])
+  }, []) // Only on mount
 
   // ──── Profile handlers ────
   const handleEditStart = () => {
@@ -475,7 +479,7 @@ export function Settings() {
                   size="sm"
                   onClick={handleBloomUpgrade}
                 >
-                  $5.99/mo
+                  $6/mo
                 </Button>
               </div>
             )}
@@ -505,7 +509,7 @@ export function Settings() {
               Danger Zone
             </h3>
           </div>
-          <div className="px-4 sm:px-0 space-y-2 pb-8 pb-safe">
+          <div className="px-4 sm:px-0 space-y-2 pb-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}>
             <button
               onClick={handleExport}
               disabled={isExporting}

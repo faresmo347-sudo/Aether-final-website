@@ -104,7 +104,7 @@ const BottomNavItem = memo(function BottomNavItem({
 
 /* ─────────── Main AppShell Component ─────────── */
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { currentView, setCurrentView, setCaptureModalOpen, profile } = useAetherStore()
+  const { currentView, setCurrentView, setCaptureModalOpen, profile, user } = useAetherStore()
 
   // Determine which nav item is active based on current view
   const activeNavView = useMemo((): AppView => {
@@ -144,7 +144,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{profile.name}</p>
-              <p className="text-xs text-muted-foreground truncate">Bloom Plan</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.plan === 'pro' ? 'Bloom Plan' : 'Seed Plan'}</p>
             </div>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {/* Compact search pill - tappable to open Ask Aether */}
             <button
               onClick={() => setCurrentView('ask-aether')}
-              className="flex-1 flex items-center gap-2 bg-muted/60 border border-border/50 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:border-[#9D8BA7]/30 hover:bg-muted transition-all duration-200 group"
+              className="flex-1 flex items-center gap-2 bg-muted/60 border border-border/50 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:border-[#9D8BA7]/30 hover:bg-muted transition-all duration-200 group min-h-[44px]"
             >
               <Search
                 size={14}
@@ -180,7 +180,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {/* Search Bar */}
             <button
               onClick={() => setCurrentView('ask-aether')}
-              className="flex-1 max-w-xl mx-auto flex items-center gap-3 bg-background border border-border rounded-full px-4 py-2 text-sm text-muted-foreground hover:border-[#9D8BA7]/30 hover:bg-card transition-all duration-200 group"
+              className="flex-1 max-w-xl mx-auto flex items-center gap-3 bg-background border border-border rounded-full px-4 py-2 text-sm text-muted-foreground hover:border-[#9D8BA7]/30 hover:bg-card transition-all duration-200 group min-h-[44px]"
+              aria-label="Search memories"
             >
               <Search
                 size={16}

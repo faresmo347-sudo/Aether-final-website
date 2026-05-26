@@ -12,6 +12,8 @@ export interface Memory {
   aiInsight?: string
   collectionId?: string
   imagePreview?: string
+  // Tagging status for optimistic UI
+  taggingStatus?: 'pending' | 'tagging' | 'complete'
   // Supabase fields
   userId?: string
   summary?: string

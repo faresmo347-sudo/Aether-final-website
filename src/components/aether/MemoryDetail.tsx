@@ -146,8 +146,7 @@ export function MemoryDetail() {
     [memories, selectedMemoryId]
   )
 
-  // Fetch AI insights when memory loads
-  const fetchInsight = () => {
+  useEffect(() => {
     if (!memory) return
     let cancelled = false
     const doFetch = async () => {
@@ -184,12 +183,7 @@ export function MemoryDetail() {
     return () => {
       cancelled = true
     }
-  }
-
-  useEffect(() => {
-    if (!memory) return
-    return fetchInsight()
-  }, [memory?.id])
+  }, [memory?.id, memory?.content, memory?.tags])
 
   // Find related memories: same collection or matching tags
   const relatedMemories = useMemo(() => {
@@ -393,7 +387,28 @@ export function MemoryDetail() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={fetchInsight}
+                  onClick={() => {
+                    // Re-trigger insight fetch by toggling the memory id
+                    if (memory) {
+                      setIsLoadingInsight(true)
+                      setInsightError(false)
+                      setAiInsight('')
+                      fetch('/api/ai/insights', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          content: memory.content,
+                          type: memory.type,
+                          tags: memory.tags,
+                          title: memory.title,
+                        }),
+                      })
+                        .then((res) => res.json())
+                        .then((data) => setAiInsight(data.insight || ''))
+                        .catch(() => setInsightError(true))
+                        .finally(() => setIsLoadingInsight(false))
+                    }
+                  }}
                   className="rounded-xl border-[#9D8BA7]/20 text-[#9D8BA7] hover:bg-[#9D8BA7]/5 w-fit"
                 >
                   Retry
@@ -598,18 +613,20 @@ export function MemoryDetail() {
                   />
                   <button
                     onClick={handleAddTag}
-                    className="h-7 w-7 rounded-full bg-[#9D8BA7] text-white flex items-center justify-center hover:bg-[#6D597A] transition-colors duration-300"
+                    aria-label="Add tag"
+                    className="min-h-[44px] min-w-[44px] rounded-full bg-[#9D8BA7] text-white flex items-center justify-center hover:bg-[#6D597A] transition-colors duration-300"
                   >
-                    <Check size={12} />
+                    <Check size={14} />
                   </button>
                   <button
                     onClick={() => {
                       setShowTagInput(false)
                       setNewTag('')
                     }}
-                    className="h-7 w-7 rounded-full bg-muted text-muted-foreground flex items-center justify-center hover:bg-muted/80 transition-colors duration-300"
+                    aria-label="Cancel tag"
+                    className="min-h-[44px] min-w-[44px] rounded-full bg-muted text-muted-foreground flex items-center justify-center hover:bg-muted/80 transition-colors duration-300"
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
                 </div>
               ) : (
@@ -726,10 +743,11 @@ export function MemoryDetail() {
       </div>
 
       {/* ── Fixed Action Bar (Mobile only) ── */}
-      <div className="md:hidden fixed bottom-16 left-0 right-0 z-30 bg-card/95 backdrop-blur-sm border-t border-border pb-safe">
+      <div className="md:hidden fixed bottom-[calc(64px+env(safe-area-inset-bottom,0px))] left-0 right-0 z-30 bg-card/95 backdrop-blur-sm border-t border-border">
         <div className="flex items-center justify-around px-4 h-16">
           <button
             onClick={handleShare}
+            aria-label="Share memory"
             className="flex flex-col items-center justify-center gap-1 min-w-[48px] min-h-[48px] rounded-xl text-muted-foreground hover:text-[#9D8BA7] active:bg-[#9D8BA7]/5 transition-colors duration-150"
           >
             <Share2 size={18} />
@@ -743,6 +761,7 @@ export function MemoryDetail() {
                   ? 'text-[#9D8BA7] bg-[#9D8BA7]/10'
                   : 'text-muted-foreground hover:text-[#9D8BA7] active:bg-[#9D8BA7]/5'
               }`}
+              aria-label={isEditing ? 'Save changes' : 'Edit memory'}
             >
               {isEditing ? <Check size={18} /> : <Pencil size={18} />}
               <span className="text-[10px] font-medium">{isEditing ? 'Save' : 'Edit'}</span>
@@ -750,6 +769,7 @@ export function MemoryDetail() {
           )}
           <button
             onClick={() => setDeleteDialogOpen(true)}
+            aria-label="Delete memory"
             className="flex flex-col items-center justify-center gap-1 min-w-[48px] min-h-[48px] rounded-xl text-red-500 hover:text-red-600 active:bg-red-50 transition-colors duration-150"
           >
             <Trash2 size={18} />

@@ -843,7 +843,7 @@ function PricingSection({ onEnterApp }: { onEnterApp: () => void }) {
               <p className="text-sm text-[#1a1a2e]/40">Unlimited memory power</p>
             </div>
             <div className="mb-6">
-              <span className="text-4xl font-bold text-[#1a1a2e]">$5.99</span>
+              <span className="text-4xl font-bold text-[#1a1a2e]">$6</span>
               <span className="text-[#1a1a2e]/40 text-sm">/month</span>
             </div>
             <ul className="space-y-3 mb-8">
@@ -917,8 +917,8 @@ function Footer() {
           <div className="flex items-center gap-6 text-sm text-[#1a1a2e]/40">
             <a href="#features" className="hover:text-[#9D8BA7] transition-colors">Features</a>
             <a href="#pricing" className="hover:text-[#9D8BA7] transition-colors">Pricing</a>
-            <span>Privacy</span>
-            <span>Terms</span>
+            <a href="#" className="hover:text-[#9D8BA7] transition-colors">Privacy</a>
+            <a href="#" className="hover:text-[#9D8BA7] transition-colors">Terms</a>
           </div>
 
           <p className="text-xs text-[#1a1a2e]/30">
@@ -936,7 +936,7 @@ function Footer() {
 
 function LandingPage({ onEnterApp }: { onEnterApp: () => void }) {
   return (
-    <div className="min-h-screen bg-[#FFFAF5] text-[#1a1a2e]">
+    <div className="min-h-screen flex flex-col bg-[#FFFAF5] text-[#1a1a2e]">
       {/* Animated Canvas Background */}
       <div className="fixed inset-0 pointer-events-none">
         <AnimatedBackground />
@@ -969,8 +969,10 @@ function LandingPage({ onEnterApp }: { onEnterApp: () => void }) {
       {/* CTA */}
       <CtaSection onEnterApp={onEnterApp} />
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer — mt-auto pushes it to bottom when content is short */}
+      <div className="mt-auto">
+        <Footer />
+      </div>
     </div>
   )
 }

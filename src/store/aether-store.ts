@@ -113,7 +113,12 @@ export const useAetherStore = create<AetherState>((set) => ({
   setSelectedMemoryId: (id) => set({ selectedMemoryId: id }),
 
   // Collections
-  collections: [],
+  collections: [
+    { id: 'col-work', name: 'Work', icon: 'briefcase', memoryCount: 0, lastUpdated: new Date().toISOString().split('T')[0], color: '#9D8BA7' },
+    { id: 'col-ideas', name: 'Ideas', icon: 'lightbulb', memoryCount: 0, lastUpdated: new Date().toISOString().split('T')[0], color: '#9D8BA7' },
+    { id: 'col-travel', name: 'Travel', icon: 'plane', memoryCount: 0, lastUpdated: new Date().toISOString().split('T')[0], color: '#9D8BA7' },
+    { id: 'col-books', name: 'Books', icon: 'book-open', memoryCount: 0, lastUpdated: new Date().toISOString().split('T')[0], color: '#9D8BA7' },
+  ],
   setCollections: (collections) => set({ collections }),
   addCollection: (collection) => set((s) => ({ collections: [...s.collections, collection] })),
 
@@ -153,7 +158,7 @@ export const useAetherStore = create<AetherState>((set) => ({
   setAutoTagging: (v) => set({ autoTagging: v }),
   defaultCapture: 'text',
   setDefaultCapture: (v) => set({ defaultCapture: v }),
-  darkMode: false,
+  darkMode: typeof window !== 'undefined' ? localStorage.getItem('aether-dark-mode') === 'true' : false,
   setDarkMode: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('aether-dark-mode', String(v))
     set({ darkMode: v })

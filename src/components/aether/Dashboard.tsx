@@ -2,11 +2,12 @@
 
 import { useState, useCallback, useMemo, memo, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles, CheckSquare, Square, Search, ClipboardPaste } from 'lucide-react'
+import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles, Search, ClipboardPaste, CheckSquare, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAetherStore } from '@/store/aether-store'
 import { createMemory, getMemoryCount } from '@/lib/supabase/data'
+import { getCachedTags, setCachedTags } from '@/lib/tag-cache'
 import type { Memory, MemoryType } from '@/components/aether/types'
 
 // ---------- helpers ----------
@@ -48,6 +49,8 @@ function formatDate(iso: string): string {
 // ---------- sub-components (memoized) ----------
 
 const MemoryCard = memo(function MemoryCard({ memory, onClick }: { memory: Memory; onClick: () => void }) {
+  const isTagging = memory.taggingStatus === 'tagging' || memory.taggingStatus === 'pending'
+
   return (
     <button
       onClick={onClick}
@@ -66,14 +69,29 @@ const MemoryCard = memo(function MemoryCard({ memory, onClick }: { memory: Memor
           </p>
           <div className="flex items-center justify-between mt-3 gap-2">
             <div className="flex items-center gap-1.5 overflow-hidden">
-              {memory.tags.slice(0, 3).map((tag) => (
+              {memory.tags.slice(0, 3).map((tag, i) => (
                 <span
                   key={tag}
-                  className="bg-[#9D8BA7]/10 text-[#9D8BA7] text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap"
+                  className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap transition-all duration-500 ${
+                    isTagging
+                      ? 'bg-[#9D8BA7]/5 text-[#9D8BA7]/40 animate-pulse'
+                      : 'bg-[#9D8BA7]/10 text-[#9D8BA7]'
+                  }`}
+                  style={isTagging ? { animationDelay: `${i * 200}ms` } : undefined}
                 >
                   {tag}
                 </span>
               ))}
+              {/* Aether is thinking indicator */}
+              {isTagging && (
+                <span className="inline-flex items-center gap-1 text-[9px] text-[#9D8BA7]/60 bg-[#9D8BA7]/5 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  <span className="relative flex size-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#9D8BA7]/40 opacity-75" />
+                    <span className="relative inline-flex rounded-full size-1.5 bg-[#9D8BA7]/60" />
+                  </span>
+                  Aether is thinking...
+                </span>
+              )}
             </div>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
               {formatDate(memory.createdAt)}
@@ -184,6 +202,7 @@ function QuickCaptureModal() {
     activeCaptureTab,
     setActiveCaptureTab,
     addMemory,
+    updateMemory,
     autoTagging,
     user,
   } = useAetherStore()
@@ -192,8 +211,10 @@ function QuickCaptureModal() {
   const [isRecording, setIsRecording] = useState(false)
   const [voiceTranscript, setVoiceTranscript] = useState('')
   const [voiceSummary, setVoiceSummary] = useState('')
+  const [isTranscribing, setIsTranscribing] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkPreview, setLinkPreview] = useState(false)
+  const [isProcessingLink, setIsProcessingLink] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageBase64, setImageBase64] = useState<string | null>(null)
   const [imageDescription, setImageDescription] = useState('')
@@ -205,6 +226,7 @@ function QuickCaptureModal() {
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
+  const linkDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragY, setDragY] = useState(0)
@@ -253,8 +275,10 @@ function QuickCaptureModal() {
     setIsRecording(false)
     setVoiceTranscript('')
     setVoiceSummary('')
+    setIsTranscribing(false)
     setLinkUrl('')
     setLinkPreview(false)
+    setIsProcessingLink(false)
     setImagePreview(null)
     setImageBase64(null)
     setImageDescription('')
@@ -266,6 +290,10 @@ function QuickCaptureModal() {
       mediaRecorder.stop()
     }
     setMediaRecorder(null)
+    if (linkDebounceRef.current) {
+      clearTimeout(linkDebounceRef.current)
+      linkDebounceRef.current = null
+    }
   }, [mediaRecorder])
 
   const handleClose = useCallback(() => {
@@ -273,14 +301,24 @@ function QuickCaptureModal() {
     resetForm()
   }, [setCaptureModalOpen, resetForm])
 
-  // Generate AI tags based on content (for text, voice, link)
+  // Generate AI tags based on content (for text, voice, link) — with caching
   const generateTags = useCallback(async (
     content: string,
     type: string,
     summary?: string,
     imgDescription?: string,
   ): Promise<string[]> => {
-    if (!autoTagging || !content.trim()) {
+    if (!content.trim()) {
+      return getSmartFallbackTags(content, type)
+    }
+
+    // Check cache first
+    const cached = getCachedTags(content, type)
+    if (cached) {
+      return cached
+    }
+
+    if (!autoTagging) {
       return getSmartFallbackTags(content, type)
     }
 
@@ -296,25 +334,33 @@ function QuickCaptureModal() {
         }),
       })
       const data = await res.json()
-      return data.tags || ['#memory']
+      const tags = data.tags || ['#memory']
+      // Cache the result
+      setCachedTags(content, type, tags)
+      return tags
     } catch {
       return getSmartFallbackTags(content, type)
     }
   }, [autoTagging])
 
   const handleSave = useCallback(async () => {
+    // Don't save if no content for text/link tabs
+    if (activeCaptureTab === 'text' && !textContent.trim()) return
+    if (activeCaptureTab === 'link' && !linkUrl.trim()) return
+    if (activeCaptureTab === 'voice' && !voiceTranscript && !isTranscribing) return
     setIsSaving(true)
-    const id = `mem-${Date.now()}`
+    const tempId = `mem-${Date.now()}`
     let title = ''
     let content = ''
-    let tags: string[] = []
+    let fallbackTags: string[] = []
     let aiSummary: string | undefined
 
+    // Step 1: Compute title, content, and smart fallback tags IMMEDIATELY (no await)
     switch (activeCaptureTab) {
       case 'text':
         title = textContent.slice(0, 50) || 'Quick note'
         content = textContent
-        tags = await generateTags(content, 'text')
+        fallbackTags = getSmartFallbackTags(content, 'text')
         break
 
       case 'voice':
@@ -322,7 +368,7 @@ function QuickCaptureModal() {
           ? voiceTranscript.slice(0, 50)
           : 'Voice memo'
         content = voiceTranscript || 'Recorded voice memo'
-        tags = await generateTags(content, 'voice', voiceSummary || undefined)
+        fallbackTags = getSmartFallbackTags(content, 'voice')
         if (voiceSummary) {
           aiSummary = voiceSummary
         }
@@ -331,22 +377,22 @@ function QuickCaptureModal() {
       case 'link':
         title = linkUrl ? `Saved link` : 'Bookmark'
         content = linkUrl || 'Saved bookmark'
-        tags = await generateTags(content, 'link')
+        fallbackTags = getSmartFallbackTags(content, 'link')
         break
 
       case 'image':
         if (imageDescription && imageTags.length > 0) {
           title = imageDescription.slice(0, 50) || 'Image capture'
           content = imageDescription
-          tags = imageTags
+          fallbackTags = imageTags
         } else if (imageDescription) {
           title = imageDescription.slice(0, 50) || 'Image capture'
           content = imageDescription
-          tags = await generateTags(content, 'image', undefined, imageDescription)
+          fallbackTags = getSmartFallbackTags(content, 'image')
         } else {
           title = 'Image capture'
           content = 'Captured image'
-          tags = await generateTags('Captured image', 'image')
+          fallbackTags = getSmartFallbackTags(content, 'image')
         }
         if (imageDescription) {
           aiSummary = `AI detected: ${imageDescription}`
@@ -354,56 +400,88 @@ function QuickCaptureModal() {
         break
     }
 
+    // Step 2: Add memory to store IMMEDIATELY with fallback tags + tagging status
+    addMemory({
+      id: tempId,
+      type: activeCaptureTab,
+      title,
+      content,
+      tags: fallbackTags,
+      createdAt: new Date().toISOString(),
+      taggingStatus: 'pending',
+      ...(aiSummary ? { aiSummary } : {}),
+      ...(activeCaptureTab === 'link' && linkUrl ? { source: linkUrl } : {}),
+      ...(activeCaptureTab === 'image' && imagePreview ? { imagePreview } : {}),
+    })
+
+    // Step 3: Close modal immediately so user sees their memory in the feed
+    setIsSaving(false)
+    setCaptureModalOpen(false)
+    resetForm()
+
+    // Step 4: After 2 seconds, upgrade to 'tagging' status (shows "Aether is thinking")
+    const taggingTimeout = setTimeout(() => {
+      updateMemory(tempId, { taggingStatus: 'tagging' })
+    }, 2000)
+
+    // Step 5: In the background — save to Supabase AND generate AI tags simultaneously
     try {
+      // Check free plan limit first
       if (user?.plan === 'free') {
         const count = await getMemoryCount()
         if (count >= 50) {
-          setIsSaving(false)
+          clearTimeout(taggingTimeout)
+          updateMemory(tempId, { taggingStatus: 'complete' })
           setShowUpgradeDialog(true)
           return
         }
       }
 
-      const returnedMemory = await createMemory({
-        type: activeCaptureTab,
-        title,
-        content,
-        tags,
-        ...(aiSummary ? { summary: aiSummary } : {}),
-        ...(activeCaptureTab === 'link' && linkUrl
-          ? { sourceUrl: linkUrl }
-          : {}),
-        ...(activeCaptureTab === 'image' && imagePreview
-          ? { imagePreview }
-          : {}),
-      })
-
-      addMemory(returnedMemory)
-    } catch (error: any) {
-      if (error?.message?.toLowerCase().includes('limit') || error?.message?.toLowerCase().includes('quota')) {
-        setShowUpgradeDialog(true)
-      } else {
-        addMemory({
-          id,
+      const [savedMemory, aiTags] = await Promise.all([
+        createMemory({
           type: activeCaptureTab,
           title,
           content,
-          tags,
-          createdAt: new Date().toISOString(),
-          ...(aiSummary ? { aiSummary } : {}),
-          ...(activeCaptureTab === 'link' && linkUrl
-            ? { source: linkUrl }
-            : {}),
-          ...(activeCaptureTab === 'image' && imagePreview
-            ? { imagePreview }
-            : {}),
-        })
+          tags: fallbackTags,
+          ...(aiSummary ? { summary: aiSummary } : {}),
+          ...(activeCaptureTab === 'link' && linkUrl ? { sourceUrl: linkUrl } : {}),
+          ...(activeCaptureTab === 'image' && imagePreview ? { imagePreview } : {}),
+        }),
+        // For image type with pre-existing tags, skip AI tagging
+        activeCaptureTab === 'image' && imageTags.length > 0
+          ? Promise.resolve(imageTags)
+          : generateTags(content, activeCaptureTab, voiceSummary || undefined, imageDescription || undefined),
+      ])
+
+      clearTimeout(taggingTimeout)
+
+      // Step 6: Update memory with real ID from Supabase and real AI tags
+      updateMemory(tempId, {
+        id: savedMemory.id,
+        tags: aiTags,
+        taggingStatus: 'complete',
+        createdAt: savedMemory.createdAt,
+        ...(savedMemory.aiSummary ? { aiSummary: savedMemory.aiSummary } : {}),
+        ...(savedMemory.source ? { source: savedMemory.source } : {}),
+      })
+    } catch (error: any) {
+      clearTimeout(taggingTimeout)
+
+      if (error?.message?.toLowerCase().includes('limit') || error?.message?.toLowerCase().includes('quota')) {
+        updateMemory(tempId, { taggingStatus: 'complete' })
+        setShowUpgradeDialog(true)
+      } else {
+        // Still try to get AI tags even if Supabase save failed
+        try {
+          const aiTags = await generateTags(content, activeCaptureTab, voiceSummary || undefined, imageDescription || undefined)
+          updateMemory(tempId, { tags: aiTags, taggingStatus: 'complete' })
+        } catch {
+          // Keep fallback tags
+          updateMemory(tempId, { taggingStatus: 'complete' })
+        }
       }
     }
-
-    setIsSaving(false)
-    handleClose()
-  }, [activeCaptureTab, textContent, voiceTranscript, voiceSummary, linkUrl, imagePreview, imageDescription, imageTags, generateTags, addMemory, handleClose, user])
+  }, [activeCaptureTab, textContent, voiceTranscript, voiceSummary, linkUrl, imagePreview, imageDescription, imageTags, generateTags, addMemory, updateMemory, setCaptureModalOpen, resetForm, user])
 
   // Handle image file selection
   const handleImageUpload = useCallback(async (file: File) => {
@@ -460,6 +538,8 @@ function QuickCaptureModal() {
         stream.getTracks().forEach((t) => t.stop())
         const blob = new Blob(chunks, { type: 'audio/webm' })
 
+        // Start transcription IMMEDIATELY on stop — don't wait for save
+        setIsTranscribing(true)
         const reader = new FileReader()
         reader.onloadend = async () => {
           const base64Audio = (reader.result as string).split(',')[1]
@@ -481,6 +561,8 @@ function QuickCaptureModal() {
               }
             } catch {
               setVoiceTranscript('Voice memo recorded — transcription will be available shortly.')
+            } finally {
+              setIsTranscribing(false)
             }
           }
         }
@@ -518,6 +600,29 @@ function QuickCaptureModal() {
       }
     } catch {
       // Clipboard API not available or permission denied
+    }
+  }, [])
+
+  // Debounced link processing — start scraping/tagging as URL is typed
+  const handleLinkUrlChange = useCallback((value: string) => {
+    setLinkUrl(value)
+    setLinkPreview(value.length > 5)
+
+    // Clear previous debounce
+    if (linkDebounceRef.current) {
+      clearTimeout(linkDebounceRef.current)
+    }
+
+    // Debounce by 500ms — start early processing
+    if (value.length > 5) {
+      linkDebounceRef.current = setTimeout(() => {
+        setIsProcessingLink(true)
+        // Simulate early link processing (could call a link-preview API)
+        // For now, just set the processing state briefly to show the indicator
+        setTimeout(() => {
+          setIsProcessingLink(false)
+        }, 1500)
+      }, 500)
     }
   }, [])
 
@@ -709,10 +814,20 @@ function QuickCaptureModal() {
                   </p>
                 )}
 
-                {!isRecording && !voiceTranscript && (
+                {!isRecording && !voiceTranscript && !isTranscribing && (
                   <p className="text-sm text-muted-foreground mt-3">
                     Tap to start recording
                   </p>
+                )}
+
+                {/* Show transcribing state immediately after stop */}
+                {isTranscribing && !isRecording && (
+                  <div className="mt-4 w-full">
+                    <div className="rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3 flex items-center gap-2">
+                      <Loader2 className="size-4 text-[#9D8BA7] animate-spin" />
+                      <p className="text-sm text-[#9D8BA7] font-medium">Transcribing your voice...</p>
+                    </div>
+                  </div>
                 )}
 
                 {voiceTranscript && !isRecording && (
@@ -744,8 +859,7 @@ function QuickCaptureModal() {
                     type="url"
                     value={linkUrl}
                     onChange={(e) => {
-                      setLinkUrl(e.target.value)
-                      setLinkPreview(e.target.value.length > 5)
+                      handleLinkUrlChange(e.target.value)
                     }}
                     placeholder="Paste any link..."
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow min-h-[44px]"
@@ -759,6 +873,14 @@ function QuickCaptureModal() {
                     <span>Paste</span>
                   </button>
                 </div>
+
+                {/* Link processing indicator */}
+                {isProcessingLink && (
+                  <div className="mt-2 rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-2.5 flex items-center gap-2">
+                    <Loader2 className="size-3.5 text-[#9D8BA7] animate-spin" />
+                    <p className="text-xs text-[#9D8BA7]">Processing link...</p>
+                  </div>
+                )}
 
                 {linkPreview && linkUrl.length > 5 && (
                   <div className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3">
@@ -873,7 +995,7 @@ function QuickCaptureModal() {
               {isSaving || isAnalyzingImage ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
-                  {isAnalyzingImage ? 'Analyzing image...' : 'Saving & tagging...'}
+                  {isAnalyzingImage ? 'Analyzing image...' : 'Saving...'}
                 </>
               ) : (
                 <>
@@ -1021,10 +1143,20 @@ function QuickCaptureModal() {
                   </p>
                 )}
 
-                {!isRecording && !voiceTranscript && (
+                {!isRecording && !voiceTranscript && !isTranscribing && (
                   <p className="text-sm text-muted-foreground mt-3">
                     Click to start recording
                   </p>
+                )}
+
+                {/* Show transcribing state immediately after stop */}
+                {isTranscribing && !isRecording && (
+                  <div className="mt-4 w-full">
+                    <div className="rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3 flex items-center gap-2">
+                      <Loader2 className="size-4 text-[#9D8BA7] animate-spin" />
+                      <p className="text-sm text-[#9D8BA7] font-medium">Transcribing your voice...</p>
+                    </div>
+                  </div>
                 )}
 
                 {voiceTranscript && !isRecording && (
@@ -1056,8 +1188,7 @@ function QuickCaptureModal() {
                     type="url"
                     value={linkUrl}
                     onChange={(e) => {
-                      setLinkUrl(e.target.value)
-                      setLinkPreview(e.target.value.length > 5)
+                      handleLinkUrlChange(e.target.value)
                     }}
                     placeholder="Paste any link..."
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9D8BA7]/30 transition-shadow"
@@ -1070,6 +1201,14 @@ function QuickCaptureModal() {
                     <span>Paste</span>
                   </button>
                 </div>
+
+                {/* Link processing indicator */}
+                {isProcessingLink && (
+                  <div className="mt-2 rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-2.5 flex items-center gap-2">
+                    <Loader2 className="size-3.5 text-[#9D8BA7] animate-spin" />
+                    <p className="text-xs text-[#9D8BA7]">Processing link...</p>
+                  </div>
+                )}
 
                 {linkPreview && linkUrl.length > 5 && (
                   <div className="mt-3 rounded-xl border border-border bg-background p-3 flex gap-3">
@@ -1177,7 +1316,7 @@ function QuickCaptureModal() {
               {isSaving || isAnalyzingImage ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
-                  {isAnalyzingImage ? 'Analyzing image...' : 'Saving & tagging...'}
+                  {isAnalyzingImage ? 'Analyzing image...' : 'Saving...'}
                 </>
               ) : (
                 <>
