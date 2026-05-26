@@ -443,7 +443,7 @@ function HeroSection() {
                     icon: Mic,
                     tag: 'Voice',
                     tagColor: 'bg-[#6D597A]/10 text-[#6D597A]',
-                    text: 'Remind me to check out that new cafe in Zamalek',
+                    text: 'Remind me to check out that new coffee shop downtown',
                     time: '2 min ago',
                   },
                   {
@@ -636,7 +636,7 @@ function HowItWorks() {
       title: 'Recall',
       subtitle: 'Ask in Natural Language',
       description:
-        '"What was that Egyptian startup idea I had last Tuesday?" — Get answers, not search results.',
+        '"What was that startup idea I had last Tuesday?" — Get answers, not search results.',
       icon: MessageCircle,
       color: '#544560',
     },
@@ -719,7 +719,7 @@ function AIChatDemo() {
   const isInView = useInView(ref, { once: true, margin: '-100px' })
 
   const demoQueries = [
-    'What was that restaurant Ahmed recommended?',
+    'What was that restaurant Alex recommended?',
     'What was the idea I had last Tuesday?',
     'Show me all my travel notes from December',
   ]
@@ -845,11 +845,11 @@ function AIChatDemo() {
                             </span>
                           </div>
                           <p className="leading-relaxed">
-                            {query.includes('Ahmed')
-                              ? 'Ahmed recommended "Koshari Laila" downtown — you saved it on March 15th. You also noted their lentil soup was exceptional. Want me to pull up the location?'
+                            {query.includes('Alex')
+                              ? 'Alex recommended "The Mill" downtown — you saved it on March 15th. You also noted their espresso was exceptional. Want me to pull up the location?'
                               : query.includes('Tuesday')
-                                ? 'You were thinking about a "Fintech for Artisans" platform while walking in Maadi. You noted the key differentiator would be micro-lending integration. I also found a related link you saved about digital wallets in Egypt.'
-                                : 'You have 4 travel notes from December: a hotel booking in Luxor, a packing list, a Nile cruise recommendation from Nada, and a restaurant list for Cairo. Want me to compile these?'}
+                                ? 'You were thinking about a "Fintech for Artisans" platform while walking downtown. You noted the key differentiator would be micro-lending integration. I also found a related link you saved about digital wallets in emerging markets.'
+                                : 'You have 4 travel notes from December: a hotel booking in San Francisco, a packing list, a trip recommendation from Sarah, and a restaurant list for NYC. Want me to compile these?'}
                           </p>
                         </div>
                       </motion.div>
@@ -1282,7 +1282,7 @@ function Footer() {
             © {new Date().getFullYear()} Aether. All rights reserved.
           </p>
           <p className="text-xs text-white/30">
-            Made with care in Cairo, Egypt 🇪🇬
+            Made with care in San Francisco, CA
           </p>
         </div>
       </div>
