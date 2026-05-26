@@ -281,6 +281,24 @@ export function MemoryDetail() {
           </div>
         </motion.div>
 
+        {/* ── Image Preview (for image memories) ── */}
+        {memory.type === 'image' && memory.imagePreview && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.4 }}
+            className="mb-6"
+          >
+            <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
+              <img
+                src={memory.imagePreview}
+                alt={memory.title}
+                className="w-full max-h-[400px] object-contain bg-muted/30"
+              />
+            </div>
+          </motion.div>
+        )}
+
         {/* ── Content ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

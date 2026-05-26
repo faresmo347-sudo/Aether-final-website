@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useMemo, memo } from 'react'
+import { useState, useCallback, useMemo, memo, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2 } from 'lucide-react'
+import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
 import { mockCollections } from '@/components/aether/mock-data'
@@ -171,20 +171,31 @@ function QuickCaptureModal() {
   const [textContent, setTextContent] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [voiceTranscript, setVoiceTranscript] = useState('')
+  const [voiceSummary, setVoiceSummary] = useState('')
   const [linkUrl, setLinkUrl] = useState('')
   const [linkPreview, setLinkPreview] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageBase64, setImageBase64] = useState<string | null>(null)
+  const [imageDescription, setImageDescription] = useState('')
+  const [imageTags, setImageTags] = useState<string[]>([])
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const resetForm = useCallback(() => {
     setTextContent('')
     setIsRecording(false)
     setVoiceTranscript('')
+    setVoiceSummary('')
     setLinkUrl('')
     setLinkPreview(false)
     setImagePreview(null)
+    setImageBase64(null)
+    setImageDescription('')
+    setImageTags([])
+    setIsAnalyzingImage(false)
     setIsSaving(false)
     setAudioChunks([])
     if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -198,34 +209,33 @@ function QuickCaptureModal() {
     resetForm()
   }
 
-  // Generate AI tags based on content
-  const generateTags = useCallback(async (content: string, type: string): Promise<string[]> => {
+  // Generate AI tags based on content (for text, voice, link)
+  const generateTags = useCallback(async (
+    content: string,
+    type: string,
+    summary?: string,
+    imgDescription?: string,
+  ): Promise<string[]> => {
     if (!autoTagging || !content.trim()) {
-      // Fallback tags
-      switch (type) {
-        case 'voice': return ['#voice', '#memo']
-        case 'link': return ['#links', '#bookmark']
-        case 'image': return ['#image', '#capture']
-        default: return ['#notes']
-      }
+      // Smarter fallback tags based on content keywords
+      return getSmartFallbackTags(content, type)
     }
 
     try {
       const res = await fetch('/api/ai/tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, type }),
+        body: JSON.stringify({
+          content,
+          type,
+          ...(summary ? { summary } : {}),
+          ...(imgDescription ? { imageDescription: imgDescription } : {}),
+        }),
       })
       const data = await res.json()
       return data.tags || ['#memory']
     } catch {
-      // Fallback tags on error
-      switch (type) {
-        case 'voice': return ['#voice', '#memo']
-        case 'link': return ['#links', '#bookmark']
-        case 'image': return ['#image', '#capture']
-        default: return ['#notes']
-      }
+      return getSmartFallbackTags(content, type)
     }
   }, [autoTagging])
 
@@ -235,32 +245,54 @@ function QuickCaptureModal() {
     let title = ''
     let content = ''
     let tags: string[] = []
+    let aiSummary: string | undefined
 
     switch (activeCaptureTab) {
       case 'text':
         title = textContent.slice(0, 50) || 'Quick note'
         content = textContent
+        tags = await generateTags(content, 'text')
         break
+
       case 'voice':
         title = voiceTranscript
           ? voiceTranscript.slice(0, 50)
           : 'Voice memo'
         content = voiceTranscript || 'Recorded voice memo'
+        // Pass the summary to generate tags based on what was actually said
+        tags = await generateTags(content, 'voice', voiceSummary || undefined)
+        // Use the AI summary from transcription if available
+        if (voiceSummary) {
+          aiSummary = voiceSummary
+        }
         break
+
       case 'link':
         title = linkUrl ? `Saved link` : 'Bookmark'
         content = linkUrl || 'Saved bookmark'
+        tags = await generateTags(content, 'link')
         break
+
       case 'image':
-        title = 'Image capture'
-        content = imagePreview
-          ? 'Captured image'
-          : 'Image saved'
+        // For images, use the VLM-generated description and tags
+        if (imageDescription && imageTags.length > 0) {
+          title = imageDescription.slice(0, 50) || 'Image capture'
+          content = imageDescription
+          tags = imageTags
+        } else if (imageDescription) {
+          title = imageDescription.slice(0, 50) || 'Image capture'
+          content = imageDescription
+          tags = await generateTags(content, 'image', undefined, imageDescription)
+        } else {
+          title = 'Image capture'
+          content = 'Captured image'
+          tags = await generateTags('Captured image', 'image')
+        }
+        if (imageDescription) {
+          aiSummary = `AI detected: ${imageDescription}`
+        }
         break
     }
-
-    // Generate AI tags
-    tags = await generateTags(content, activeCaptureTab)
 
     addMemory({
       id,
@@ -269,6 +301,7 @@ function QuickCaptureModal() {
       content,
       tags,
       createdAt: new Date().toISOString(),
+      ...(aiSummary ? { aiSummary } : {}),
       ...(activeCaptureTab === 'link' && linkUrl
         ? { source: linkUrl }
         : {}),
@@ -279,7 +312,48 @@ function QuickCaptureModal() {
 
     setIsSaving(false)
     handleClose()
-  }, [activeCaptureTab, textContent, voiceTranscript, linkUrl, imagePreview, generateTags, addMemory, handleClose])
+  }, [activeCaptureTab, textContent, voiceTranscript, voiceSummary, linkUrl, imagePreview, imageDescription, imageTags, generateTags, addMemory, handleClose])
+
+  // Handle image file selection — actually read and analyze the image
+  const handleImageUpload = useCallback(async (file: File) => {
+    // Read the image for preview and base64
+    const reader = new FileReader()
+    reader.onloadend = async () => {
+      const dataUrl = reader.result as string
+      setImagePreview(dataUrl)
+
+      // Extract base64 for API calls
+      const base64 = dataUrl.split(',')[1]
+      if (base64) {
+        setImageBase64(base64)
+        setIsAnalyzingImage(true)
+
+        try {
+          // Call the VLM image analysis endpoint
+          const res = await fetch('/api/ai/analyze-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataUrl }),
+          })
+          const data = await res.json()
+
+          if (data.description) {
+            setImageDescription(data.description)
+          }
+          if (data.tags && data.tags.length > 0) {
+            setImageTags(data.tags)
+          }
+        } catch (error) {
+          console.error('Image analysis failed:', error)
+          setImageDescription('')
+          setImageTags([])
+        } finally {
+          setIsAnalyzingImage(false)
+        }
+      }
+    }
+    reader.readAsDataURL(file)
+  }, [])
 
   // Start voice recording with real MediaRecorder API
   const startRecording = useCallback(async () => {
@@ -314,6 +388,10 @@ function QuickCaptureModal() {
                 setVoiceTranscript(data.transcription)
               } else {
                 setVoiceTranscript('Voice memo recorded — transcription will be available shortly.')
+              }
+              // Capture the summary for use in tag generation and memory creation
+              if (data.summary) {
+                setVoiceSummary(data.summary)
               }
             } catch {
               setVoiceTranscript('Voice memo recorded — transcription will be available shortly.')
@@ -439,11 +517,21 @@ function QuickCaptureModal() {
               )}
 
               {voiceTranscript && !isRecording && (
-                <div className="mt-4 w-full rounded-xl border border-border bg-background p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Transcription</p>
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {voiceTranscript}
-                  </p>
+                <div className="mt-4 w-full space-y-2">
+                  <div className="rounded-xl border border-border bg-background p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Transcription</p>
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {voiceTranscript}
+                    </p>
+                  </div>
+                  {voiceSummary && (
+                    <div className="rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
+                      <p className="text-xs text-[#9D8BA7] font-medium mb-1">AI Summary</p>
+                      <p className="text-sm text-foreground leading-relaxed">
+                        {voiceSummary}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -492,26 +580,70 @@ function QuickCaptureModal() {
                     Drop an image or click to upload
                   </p>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={() => {
-                      setImagePreview('mock')
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        handleImageUpload(file)
+                      }
                     }}
                   />
                 </label>
               ) : (
-                <div className="relative h-36 rounded-xl bg-gradient-to-br from-[#9D8BA7]/20 to-[#9D8BA7]/5 flex items-center justify-center overflow-hidden">
-                  <div className="flex flex-col items-center gap-1">
-                    <ImageIcon className="size-10 text-[#9D8BA7]/40" />
-                    <p className="text-xs text-[#9D8BA7]/60">Image uploaded</p>
-                  </div>
+                <div className="relative rounded-xl overflow-hidden">
+                  {/* Show the actual image preview */}
+                  <img
+                    src={imagePreview}
+                    alt="Uploaded image preview"
+                    className="w-full h-36 object-cover rounded-xl"
+                  />
                   <button
-                    onClick={() => setImagePreview(null)}
+                    onClick={() => {
+                      setImagePreview(null)
+                      setImageBase64(null)
+                      setImageDescription('')
+                      setImageTags([])
+                    }}
                     className="absolute top-2 right-2 size-6 rounded-full bg-card/80 flex items-center justify-center text-muted-foreground hover:text-red-500 transition-colors"
                   >
                     <X className="size-3" />
                   </button>
+
+                  {/* AI analysis overlay */}
+                  {isAnalyzingImage && (
+                    <div className="absolute inset-0 bg-black/50 rounded-xl flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="size-6 text-white animate-spin" />
+                      <p className="text-xs text-white font-medium">Analyzing image...</p>
+                    </div>
+                  )}
+
+                  {/* Show AI analysis results */}
+                  {!isAnalyzingImage && imageDescription && (
+                    <div className="mt-2 rounded-xl border border-[#9D8BA7]/20 bg-[#9D8BA7]/5 p-3">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Eye className="size-3.5 text-[#9D8BA7]" />
+                        <p className="text-xs text-[#9D8BA7] font-medium">AI Analysis</p>
+                      </div>
+                      <p className="text-sm text-foreground leading-relaxed">
+                        {imageDescription}
+                      </p>
+                      {imageTags.length > 0 && (
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          {imageTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="bg-[#9D8BA7]/10 text-[#9D8BA7] text-[10px] px-2 py-0.5 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -522,13 +654,13 @@ function QuickCaptureModal() {
         <div className="px-5 pb-5">
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || isAnalyzingImage}
             className="w-full bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl h-11 text-sm font-medium transition-colors"
           >
-            {isSaving ? (
+            {isSaving || isAnalyzingImage ? (
               <>
                 <Loader2 className="size-4 mr-2 animate-spin" />
-                Saving & tagging...
+                {isAnalyzingImage ? 'Analyzing image...' : 'Saving & tagging...'}
               </>
             ) : (
               <>
@@ -541,6 +673,74 @@ function QuickCaptureModal() {
       </div>
     </div>
   )
+}
+
+// ---------- Smart fallback tags based on content keywords ----------
+
+function getSmartFallbackTags(content: string, type: string): string[] {
+  const lower = content.toLowerCase()
+  const tags: string[] = []
+
+  const topicMap: Record<string, string[]> = {
+    cafe: ['#cafe', '#food'],
+    coffee: ['#coffee', '#food'],
+    restaurant: ['#restaurant', '#food'],
+    lunch: ['#food', '#lunch'],
+    dinner: ['#food', '#dinner'],
+    breakfast: ['#food', '#breakfast'],
+    meeting: ['#meeting', '#work'],
+    project: ['#project', '#work'],
+    code: ['#code', '#programming'],
+    programming: ['#programming', '#tech'],
+    book: ['#books', '#reading'],
+    recipe: ['#recipe', '#food', '#cooking'],
+    travel: ['#travel'],
+    trip: ['#travel'],
+    idea: ['#idea', '#creativity'],
+    workout: ['#fitness', '#health'],
+    gym: ['#fitness', '#health'],
+    movie: ['#movies', '#entertainment'],
+    music: ['#music'],
+    shopping: ['#shopping'],
+    budget: ['#finance', '#budgeting'],
+    money: ['#finance'],
+    doctor: ['#health', '#medical'],
+    family: ['#family'],
+    friend: ['#social', '#friends'],
+    party: ['#social', '#events'],
+    school: ['#education', '#learning'],
+    study: ['#education', '#study'],
+    design: ['#design', '#creative'],
+    ai: ['#ai', '#technology'],
+    startup: ['#startup', '#business'],
+    product: ['#product', '#business'],
+  }
+
+  for (const [keyword, tagList] of Object.entries(topicMap)) {
+    if (lower.includes(keyword) && tags.length < 4) {
+      for (const tag of tagList) {
+        if (!tags.includes(tag) && tags.length < 4) {
+          tags.push(tag)
+        }
+      }
+    }
+  }
+
+  // Type-specific fallbacks only if no content-based tags were found
+  if (tags.length === 0) {
+    switch (type) {
+      case 'voice':
+        return ['#spoken', '#memo']
+      case 'link':
+        return ['#bookmark', '#saved']
+      case 'image':
+        return ['#visual', '#capture']
+      default:
+        return ['#memory']
+    }
+  }
+
+  return tags
 }
 
 // ---------- main Dashboard ----------
