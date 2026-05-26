@@ -1,8 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X } from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+  Plus,
+  Briefcase,
+  Lightbulb,
+  Plane,
+  BookOpen,
+  ChefHat,
+  Moon,
+  Target,
+  Palette,
+  Music,
+  Globe,
+  Wrench,
+  Heart,
+  type LucideIcon,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,37 +32,71 @@ import { mockCollections, allTags } from './mock-data'
 import { useAetherStore } from '@/store/aether-store'
 import type { Collection } from './types'
 
-const emojiOptions = ['💼', '💡', '✈️', '📚', '🍳', '🌙', '🎯', '🎨', '🎵', '🌍', '🔧', '❤️']
+/* ─────────── Icon Registry ─────────── */
+
+interface IconOption {
+  key: string
+  icon: LucideIcon
+  label: string
+}
+
+const iconOptions: IconOption[] = [
+  { key: 'briefcase', icon: Briefcase, label: 'Work' },
+  { key: 'lightbulb', icon: Lightbulb, label: 'Ideas' },
+  { key: 'plane', icon: Plane, label: 'Travel' },
+  { key: 'book-open', icon: BookOpen, label: 'Books' },
+  { key: 'chef-hat', icon: ChefHat, label: 'Recipes' },
+  { key: 'moon', icon: Moon, label: 'Personal' },
+  { key: 'target', icon: Target, label: 'Goals' },
+  { key: 'palette', icon: Palette, label: 'Creative' },
+  { key: 'music', icon: Music, label: 'Music' },
+  { key: 'globe', icon: Globe, label: 'World' },
+  { key: 'wrench', icon: Wrench, label: 'Tools' },
+  { key: 'heart', icon: Heart, label: 'Health' },
+]
+
+const iconMap: Record<string, LucideIcon> = Object.fromEntries(
+  iconOptions.map((o) => [o.key, o.icon])
+)
+
+function CollectionIcon({ iconKey, className, style }: { iconKey: string; className?: string; style?: React.CSSProperties }) {
+  const Icon = iconMap[iconKey] ?? Briefcase
+  return <Icon className={className} style={style} />
+}
+
+/* ─────────── Helpers ─────────── */
 
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr)
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+/* ─────────── Collections Component ─────────── */
+
 export function Collections() {
   const { setCurrentView } = useAetherStore()
   const [collections, setCollections] = useState<Collection[]>(mockCollections)
   const [createOpen, setCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
-  const [selectedEmoji, setSelectedEmoji] = useState<string>('💼')
+  const [selectedIcon, setSelectedIcon] = useState<string>('briefcase')
 
   const handleCreate = () => {
     if (!newName.trim()) return
     const newCollection: Collection = {
       id: `col-${Date.now()}`,
       name: newName.trim(),
-      icon: selectedEmoji,
+      icon: selectedIcon,
       memoryCount: 0,
       lastUpdated: new Date().toISOString().split('T')[0],
       color: '#9D8BA7',
     }
     setCollections((prev) => [...prev, newCollection])
     setNewName('')
-    setSelectedEmoji('💼')
+    setSelectedIcon('briefcase')
     setCreateOpen(false)
   }
 
-  const handleCollectionClick = (collection: Collection) => {
+  const handleCollectionClick = (_collection: Collection) => {
     setCurrentView('dashboard')
   }
 
@@ -91,9 +140,18 @@ export function Collections() {
               transition={{ delay: index * 0.05, duration: 0.3 }}
               whileHover={{ y: -2 }}
               onClick={() => handleCollectionClick(collection)}
-              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-50 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-50 hover:shadow-md hover:border-[#9D8BA7]/15 transition-all cursor-pointer group"
             >
-              <div className="text-3xl mb-3">{collection.icon}</div>
+              <div
+                className="h-10 w-10 rounded-xl flex items-center justify-center mb-3 transition-colors duration-300 group-hover:scale-110"
+                style={{ backgroundColor: `${collection.color}15` }}
+              >
+                <CollectionIcon
+                  iconKey={collection.icon}
+                  className="size-5 transition-colors duration-300"
+                  style={{ color: collection.color }}
+                />
+              </div>
               <h3
                 className="font-bold text-sm sm:text-base mb-1"
                 style={{ color: '#1a1a2e' }}
@@ -184,27 +242,35 @@ export function Collections() {
                 className="block text-sm font-medium mb-2"
                 style={{ color: '#1a1a2e' }}
               >
-                Choose an Emoji
+                Choose an Icon
               </label>
               <div className="grid grid-cols-6 gap-2">
-                {emojiOptions.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => setSelectedEmoji(emoji)}
-                    className={`text-2xl p-2 rounded-xl transition-all ${
-                      selectedEmoji === emoji
-                        ? 'ring-2 scale-110'
-                        : 'hover:bg-gray-100'
-                    }`}
-                    style={
-                      selectedEmoji === emoji
-                        ? { ringColor: '#9D8BA7', backgroundColor: 'rgba(157, 139, 167, 0.1)' }
-                        : {}
-                    }
-                  >
-                    {emoji}
-                  </button>
-                ))}
+                {iconOptions.map((opt) => {
+                  const Icon = opt.icon
+                  const isSelected = selectedIcon === opt.key
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setSelectedIcon(opt.key)}
+                      className={`p-2.5 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                        isSelected
+                          ? 'scale-110 shadow-sm'
+                          : 'hover:bg-gray-100'
+                      }`}
+                      style={
+                        isSelected
+                          ? { backgroundColor: 'rgba(157, 139, 167, 0.12)', outline: '2px solid #9D8BA7' }
+                          : {}
+                      }
+                      title={opt.label}
+                    >
+                      <Icon
+                        className="size-5"
+                        style={{ color: isSelected ? '#9D8BA7' : '#1a1a2e50' }}
+                      />
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>

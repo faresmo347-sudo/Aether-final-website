@@ -391,21 +391,33 @@ const steps = [
     step: '01',
     title: 'Capture anything',
     description: 'Voice notes, text, links, images — save it all in seconds. Aether handles the rest.',
-    visual: '🎙️',
+    icon: 'mic',
   },
   {
     step: '02',
     title: 'AI understands',
     description: 'Aether reads, summarizes, tags, and connects your memories automatically.',
-    visual: '🧠',
+    icon: 'brain',
   },
   {
     step: '03',
     title: 'Retrieve instantly',
     description: 'Ask in natural language. Aether finds exactly what you need, when you need it.',
-    visual: '✨',
+    icon: 'sparkles',
   },
 ]
+
+const stepIconMap: Record<string, React.ReactNode> = {
+  mic: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9D8BA7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+  ),
+  brain: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9D8BA7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>
+  ),
+  sparkles: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9D8BA7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+  ),
+}
 
 function HowItWorksSection() {
   return (
@@ -441,10 +453,10 @@ function HowItWorksSection() {
                 <div className="hidden md:block absolute top-12 left-[calc(50%+40px)] right-[calc(-50%+40px)] h-[2px] bg-gradient-to-r from-[#9D8BA7]/20 to-[#9D8BA7]/5" />
               )}
 
-              {/* Step number + emoji */}
+              {/* Step number + icon */}
               <div className="relative inline-flex items-center justify-center mb-6">
-                <div className="h-24 w-24 rounded-3xl bg-gradient-to-br from-[#9D8BA7]/10 to-[#9D8BA7]/5 flex items-center justify-center text-5xl">
-                  {step.visual}
+                <div className="h-24 w-24 rounded-3xl bg-gradient-to-br from-[#9D8BA7]/10 to-[#9D8BA7]/5 flex items-center justify-center">
+                  {stepIconMap[step.icon]}
                 </div>
                 <span className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-[#9D8BA7] text-white text-xs font-bold flex items-center justify-center shadow-lg shadow-[#9D8BA7]/30">
                   {step.step}

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus } from 'lucide-react'
+import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
 import type { Memory, MemoryType } from '@/components/aether/types'
@@ -131,7 +131,9 @@ function EmptyState() {
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col items-center justify-center py-20 px-6 text-center"
     >
-      <span className="text-6xl mb-4">🧠</span>
+      <div className="h-16 w-16 rounded-2xl bg-[#9D8BA7]/10 flex items-center justify-center mb-4">
+        <Brain className="size-8 text-[#9D8BA7]" />
+      </div>
       <h3 className="font-serif text-lg font-semibold text-[#1a1a2e]">
         No memories here yet
       </h3>

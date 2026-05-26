@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, CheckCircle2, Circle, Calendar, TrendingUp, Clock, Sparkles } from 'lucide-react'
+import { Brain, CheckCircle2, Circle, Calendar, TrendingUp, Clock, Sparkles, Mic, Link2, Image as ImageIcon, FileText } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAetherStore } from '@/store/aether-store'
 
@@ -148,10 +148,10 @@ export function Recaps() {
                   >
                     <div className="flex items-start gap-3">
                       <div
-                        className="size-8 rounded-lg flex items-center justify-center shrink-0 text-xs"
+                        className="size-8 rounded-lg flex items-center justify-center shrink-0"
                         style={{ backgroundColor: 'rgba(157, 139, 167, 0.12)' }}
                       >
-                        {memory.type === 'voice' ? '🎤' : memory.type === 'link' ? '🔗' : memory.type === 'image' ? '🖼️' : '📝'}
+                        {memory.type === 'voice' ? <Mic className="size-4" style={{ color: '#9D8BA7' }} /> : memory.type === 'link' ? <Link2 className="size-4" style={{ color: '#9D8BA7' }} /> : memory.type === 'image' ? <ImageIcon className="size-4" style={{ color: '#9D8BA7' }} /> : <FileText className="size-4" style={{ color: '#9D8BA7' }} />}
                       </div>
                       <div className="min-w-0">
                         <h4

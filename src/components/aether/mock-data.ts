@@ -106,12 +106,12 @@ export const mockMemories: Memory[] = [
 ]
 
 export const mockCollections: Collection[] = [
-  { id: 'col-1', name: 'Work', icon: '💼', memoryCount: 24, lastUpdated: '2025-01-15', color: '#9D8BA7' },
-  { id: 'col-2', name: 'Ideas', icon: '💡', memoryCount: 18, lastUpdated: '2025-01-14', color: '#E8B87A' },
-  { id: 'col-3', name: 'Travel', icon: '✈️', memoryCount: 12, lastUpdated: '2025-01-13', color: '#7AB8B8' },
-  { id: 'col-4', name: 'Books', icon: '📚', memoryCount: 9, lastUpdated: '2025-01-10', color: '#B87A7A' },
-  { id: 'col-5', name: 'Recipes', icon: '🍳', memoryCount: 15, lastUpdated: '2025-01-12', color: '#7AB87A' },
-  { id: 'col-6', name: 'Personal', icon: '🌙', memoryCount: 21, lastUpdated: '2025-01-15', color: '#8B7AB8' },
+  { id: 'col-1', name: 'Work', icon: 'briefcase', memoryCount: 24, lastUpdated: '2025-01-15', color: '#9D8BA7' },
+  { id: 'col-2', name: 'Ideas', icon: 'lightbulb', memoryCount: 18, lastUpdated: '2025-01-14', color: '#E8B87A' },
+  { id: 'col-3', name: 'Travel', icon: 'plane', memoryCount: 12, lastUpdated: '2025-01-13', color: '#7AB8B8' },
+  { id: 'col-4', name: 'Books', icon: 'book-open', memoryCount: 9, lastUpdated: '2025-01-10', color: '#B87A7A' },
+  { id: 'col-5', name: 'Recipes', icon: 'chef-hat', memoryCount: 15, lastUpdated: '2025-01-12', color: '#7AB87A' },
+  { id: 'col-6', name: 'Personal', icon: 'moon', memoryCount: 21, lastUpdated: '2025-01-15', color: '#8B7AB8' },
 ]
 
 export const allTags = [
