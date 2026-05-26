@@ -14,6 +14,7 @@ import {
   Check,
   X,
   Loader2,
+  LogOut,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/select'
 import { useAetherStore } from '@/store/aether-store'
 import { useToast } from '@/hooks/use-toast'
+import { signOut, updateProfile, exportAllMemories } from '@/lib/supabase/data'
 import type { CaptureTab } from './types'
 
 export function Settings() {
@@ -44,6 +46,8 @@ export function Settings() {
     profile,
     setProfile,
     memories,
+    user,
+    setCurrentView,
   } = useAetherStore()
 
   const { toast } = useToast()
@@ -69,7 +73,7 @@ export function Settings() {
     setEditEmail(profile.email)
   }
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     const trimmedName = editName.trim()
     const trimmedEmail = editEmail.trim()
     if (!trimmedName || !trimmedEmail) return
@@ -80,9 +84,19 @@ export function Settings() {
       ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
       : trimmedName.slice(0, 2).toUpperCase()
 
-    setProfile({ name: trimmedName, email: trimmedEmail, initials })
-    setIsEditing(false)
-    toast({ title: 'Profile updated!', description: 'Your changes have been saved.' })
+    try {
+      // Save to Supabase if we have a user ID
+      if (user?.id) {
+        await updateProfile(user.id, { name: trimmedName })
+      }
+
+      setProfile({ ...profile, name: trimmedName, email: trimmedEmail, initials })
+      setIsEditing(false)
+      toast({ title: 'Profile updated!', description: 'Your changes have been saved.' })
+    } catch (err) {
+      console.error('Failed to update profile:', err)
+      toast({ title: 'Update failed', description: 'Could not save your profile. Please try again.', variant: 'destructive' })
+    }
   }
 
   // ──── Dark mode handler ────
@@ -96,24 +110,10 @@ export function Settings() {
   }, [setDarkMode])
 
   // ──── Export handler ────
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     setIsExporting(true)
-
-    // Simulate a brief processing delay for UX
-    setTimeout(() => {
-      const exportData = memories.map((m) => ({
-        id: m.id,
-        type: m.type,
-        title: m.title,
-        content: m.content,
-        tags: m.tags,
-        createdAt: m.createdAt,
-        ...(m.source ? { source: m.source } : {}),
-        ...(m.aiSummary ? { aiSummary: m.aiSummary } : {}),
-        ...(m.collectionId ? { collectionId: m.collectionId } : {}),
-      }))
-
-      const jsonString = JSON.stringify(exportData, null, 2)
+    try {
+      const jsonString = await exportAllMemories()
       const blob = new Blob([jsonString], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -124,13 +124,21 @@ export function Settings() {
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
-      setIsExporting(false)
       toast({
         title: 'Export complete!',
-        description: `${memories.length} memories exported as JSON.`,
+        description: 'All memories exported as JSON from Supabase.',
       })
-    }, 800)
-  }, [memories, toast])
+    } catch (err) {
+      console.error('Export failed:', err)
+      toast({
+        title: 'Export failed',
+        description: 'Could not export your memories. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }, [toast])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -229,14 +237,28 @@ export function Settings() {
                     {profile.email}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleEditStart}
-                  className="ml-auto rounded-full text-xs text-[#9D8BA7] hover:text-[#7A6B85] hover:bg-[#9D8BA7]/5"
-                >
-                  Edit
-                </Button>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEditStart}
+                    className="rounded-full text-xs text-[#9D8BA7] hover:text-[#7A6B85] hover:bg-[#9D8BA7]/5"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      await signOut()
+                      setCurrentView('landing')
+                    }}
+                    className="rounded-full text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="size-3.5 mr-1" />
+                    Sign Out
+                  </Button>
+                </div>
               </div>
             )}
           </motion.div>
@@ -357,38 +379,42 @@ export function Settings() {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-bold text-foreground">
-                    Seed (Free)
+                    {user?.plan === 'pro' ? 'Bloom (Pro)' : 'Seed (Free)'}
                   </p>
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#9D8BA7]/10 text-[#9D8BA7]">
                     Current
                   </span>
                 </div>
                 <p className="text-xs mt-0.5 text-muted-foreground">
-                  50 memories/month
+                  {user?.plan === 'pro'
+                    ? `${memories.length} memories · Unlimited`
+                    : `${memories.length} out of 50 memories`}
                 </p>
               </div>
             </div>
-            <div className="mt-4 p-4 rounded-xl bg-[#9D8BA7]/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Crown className="size-4 text-[#9D8BA7]" />
-                  <div>
-                    <p className="text-sm font-bold text-foreground">
-                      Bloom
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Unlimited memories, AI insights, priority support
-                    </p>
+            {user?.plan !== 'pro' && (
+              <div className="mt-4 p-4 rounded-xl bg-[#9D8BA7]/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Crown className="size-4 text-[#9D8BA7]" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">
+                        Bloom
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Unlimited memories, AI insights, priority support
+                      </p>
+                    </div>
                   </div>
+                  <Button
+                    className="rounded-full text-xs shadow-sm bg-[#9D8BA7] hover:bg-[#7A6B85] text-white"
+                    size="sm"
+                  >
+                    $5.99/mo
+                  </Button>
                 </div>
-                <Button
-                  className="rounded-full text-xs shadow-sm bg-[#9D8BA7] hover:bg-[#7A6B85] text-white"
-                  size="sm"
-                >
-                  $5.99/mo
-                </Button>
               </div>
-            </div>
+            )}
           </motion.div>
 
           {/* ── Danger Zone ── */}

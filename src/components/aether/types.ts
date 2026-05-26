@@ -9,8 +9,15 @@ export interface Memory {
   createdAt: string
   source?: string
   aiSummary?: string
+  aiInsight?: string
   collectionId?: string
   imagePreview?: string
+  // Supabase fields
+  userId?: string
+  summary?: string
+  sourceUrl?: string
+  fileUrl?: string
+  updatedAt?: string
 }
 
 export interface Collection {
@@ -20,6 +27,8 @@ export interface Collection {
   memoryCount: number
   lastUpdated: string
   color: string
+  // Supabase fields
+  userId?: string
 }
 
 export interface ChatMessage {
@@ -31,8 +40,27 @@ export interface ChatMessage {
   timestamp: string
 }
 
-export type AppView = 'landing' | 'dashboard' | 'memory-detail' | 'ask-aether' | 'collections' | 'recaps' | 'settings'
+export type AppView = 
+  | 'landing' 
+  | 'signup' 
+  | 'signin' 
+  | 'forgot-password'
+  | 'dashboard' 
+  | 'memory-detail' 
+  | 'ask-aether' 
+  | 'collections' 
+  | 'recaps' 
+  | 'settings'
 
 export type CaptureTab = 'text' | 'voice' | 'link' | 'image'
 
 export type RecapView = 'daily' | 'weekly'
+
+export interface UserProfile {
+  id?: string
+  name: string
+  email: string
+  initials: string
+  avatarUrl?: string
+  plan?: 'free' | 'pro'
+}

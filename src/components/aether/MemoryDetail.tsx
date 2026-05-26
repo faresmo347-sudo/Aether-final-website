@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
@@ -18,10 +18,13 @@ import {
   X,
   Check,
   ExternalLink,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
   DialogContent,
@@ -132,11 +135,52 @@ export function MemoryDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [showTagInput, setShowTagInput] = useState(false)
   const [newTag, setNewTag] = useState('')
+  const [aiInsight, setAiInsight] = useState('')
+  const [isLoadingInsight, setIsLoadingInsight] = useState(false)
+  const [showOriginal, setShowOriginal] = useState(false)
 
   const memory = useMemo(
     () => memories.find((m) => m.id === selectedMemoryId),
     [memories, selectedMemoryId]
   )
+
+  // Fetch AI insights when memory loads
+  useEffect(() => {
+    if (!memory) return
+    let cancelled = false
+    const fetchInsight = async () => {
+      setIsLoadingInsight(true)
+      setAiInsight('')
+      try {
+        const res = await fetch('/api/ai/insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: memory.content,
+            type: memory.type,
+            tags: memory.tags,
+            title: memory.title,
+          }),
+        })
+        if (!cancelled) {
+          const data = await res.json()
+          setAiInsight(data.insight || '')
+        }
+      } catch {
+        if (!cancelled) {
+          setAiInsight('')
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingInsight(false)
+        }
+      }
+    }
+    fetchInsight()
+    return () => {
+      cancelled = true
+    }
+  }, [memory?.id])
 
   // Find related memories: same collection or matching tags
   const relatedMemories = useMemo(() => {
@@ -281,20 +325,135 @@ export function MemoryDetail() {
           </div>
         </motion.div>
 
-        {/* ── Image Preview (for image memories) ── */}
-        {memory.type === 'image' && memory.imagePreview && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12, duration: 0.4 }}
-            className="mb-6"
+        {/* ── AI Insights ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.4 }}
+          className="mb-6"
+        >
+          <div className="rounded-2xl bg-card border border-border p-6 shadow-sm border-l-4 border-l-[#9D8BA7]">
+            <div className="flex items-center gap-2 mb-3">
+              <Brain size={16} className="text-[#9D8BA7]" />
+              <span className="text-xs font-semibold text-[#9D8BA7] uppercase tracking-wider">
+                Aether Insights
+              </span>
+            </div>
+            {isLoadingInsight ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : aiInsight ? (
+              <p className="text-sm text-foreground leading-relaxed">
+                {aiInsight}
+              </p>
+            ) : null}
+          </div>
+        </motion.div>
+
+        {/* ── View Original Memory Toggle ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.14, duration: 0.4 }}
+          className="mb-6"
+        >
+          <Button
+            variant="outline"
+            onClick={() => setShowOriginal(!showOriginal)}
+            className="rounded-xl border-border text-foreground hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/20 hover:text-[#9D8BA7] transition-all duration-300 w-full sm:w-auto"
           >
-            <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
-              <img
-                src={memory.imagePreview}
-                alt={memory.title}
-                className="w-full max-h-[400px] object-contain bg-muted/30"
-              />
+            {showOriginal ? (
+              <>
+                <EyeOff size={16} className="mr-2" />
+                Hide Original Memory
+              </>
+            ) : (
+              <>
+                <Eye size={16} className="mr-2" />
+                View Original Memory
+              </>
+            )}
+          </Button>
+        </motion.div>
+
+        {/* ── Original Memory Content ── */}
+        {showOriginal && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="mb-6 overflow-hidden"
+          >
+            <div className="rounded-2xl bg-card border border-border p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Your original memory
+                </span>
+              </div>
+
+              {/* Image memories: show the uploaded image */}
+              {memory.type === 'image' && memory.imagePreview && (
+                <div className="rounded-xl overflow-hidden border border-border mb-4">
+                  <img
+                    src={memory.imagePreview}
+                    alt={memory.title}
+                    className="w-full max-h-[400px] object-contain bg-muted/30"
+                  />
+                </div>
+              )}
+
+              {/* Voice memories: show raw transcription and AI summary */}
+              {memory.type === 'voice' && (
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground mb-1 block">Raw Transcription</span>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-xl p-4">
+                      {memory.content}
+                    </p>
+                  </div>
+                  {memory.aiSummary && (
+                    <div>
+                      <span className="text-xs font-medium text-[#9D8BA7] mb-1 block">AI Summary</span>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-[#9D8BA7]/5 rounded-xl p-4 border border-[#9D8BA7]/10">
+                        {memory.aiSummary}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Link memories: show original URL */}
+              {memory.type === 'link' && (
+                <div className="space-y-3">
+                  {memory.source && (
+                    <a
+                      href={memory.source}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-[#9D8BA7] hover:text-[#6D597A] underline underline-offset-2 transition-colors duration-300 break-all"
+                    >
+                      <Link2 size={14} />
+                      {memory.source}
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    {memory.content}
+                  </p>
+                </div>
+              )}
+
+              {/* Text memories: show original text as typed */}
+              {memory.type === 'text' && (
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                  {memory.content}
+                </p>
+              )}
             </div>
           </motion.div>
         )}

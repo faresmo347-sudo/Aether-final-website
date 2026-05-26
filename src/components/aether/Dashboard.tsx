@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useMemo, memo, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye } from 'lucide-react'
+import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
+import { createMemory, getMemoryCount } from '@/lib/supabase/data'
 import { mockCollections } from '@/components/aether/mock-data'
 import type { Memory, MemoryType } from '@/components/aether/types'
 
@@ -166,6 +167,7 @@ function QuickCaptureModal() {
     setActiveCaptureTab,
     addMemory,
     autoTagging,
+    user,
   } = useAetherStore()
 
   const [textContent, setTextContent] = useState('')
@@ -180,6 +182,7 @@ function QuickCaptureModal() {
   const [imageTags, setImageTags] = useState<string[]>([])
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -294,25 +297,60 @@ function QuickCaptureModal() {
         break
     }
 
-    addMemory({
-      id,
-      type: activeCaptureTab,
-      title,
-      content,
-      tags,
-      createdAt: new Date().toISOString(),
-      ...(aiSummary ? { aiSummary } : {}),
-      ...(activeCaptureTab === 'link' && linkUrl
-        ? { source: linkUrl }
-        : {}),
-      ...(activeCaptureTab === 'image' && imagePreview
-        ? { imagePreview }
-        : {}),
-    })
+    // Check free tier limit before creating
+    try {
+      if (user?.plan === 'free') {
+        const count = await getMemoryCount()
+        if (count >= 50) {
+          setIsSaving(false)
+          setShowUpgradeDialog(true)
+          return
+        }
+      }
+
+      const returnedMemory = await createMemory({
+        type: activeCaptureTab,
+        title,
+        content,
+        tags,
+        ...(aiSummary ? { summary: aiSummary } : {}),
+        ...(activeCaptureTab === 'link' && linkUrl
+          ? { sourceUrl: linkUrl }
+          : {}),
+        ...(activeCaptureTab === 'image' && imagePreview
+          ? { imagePreview }
+          : {}),
+      })
+
+      addMemory(returnedMemory)
+    } catch (error: any) {
+      // If the error is about limits from Supabase, show upgrade dialog
+      if (error?.message?.toLowerCase().includes('limit') || error?.message?.toLowerCase().includes('quota')) {
+        setShowUpgradeDialog(true)
+      }
+      // Otherwise, fall back to local-only save so the user doesn't lose their data
+      else {
+        addMemory({
+          id,
+          type: activeCaptureTab,
+          title,
+          content,
+          tags,
+          createdAt: new Date().toISOString(),
+          ...(aiSummary ? { aiSummary } : {}),
+          ...(activeCaptureTab === 'link' && linkUrl
+            ? { source: linkUrl }
+            : {}),
+          ...(activeCaptureTab === 'image' && imagePreview
+            ? { imagePreview }
+            : {}),
+        })
+      }
+    }
 
     setIsSaving(false)
     handleClose()
-  }, [activeCaptureTab, textContent, voiceTranscript, voiceSummary, linkUrl, imagePreview, imageDescription, imageTags, generateTags, addMemory, handleClose])
+  }, [activeCaptureTab, textContent, voiceTranscript, voiceSummary, linkUrl, imagePreview, imageDescription, imageTags, generateTags, addMemory, handleClose, user])
 
   // Handle image file selection — actually read and analyze the image
   const handleImageUpload = useCallback(async (file: File) => {
@@ -433,10 +471,71 @@ function QuickCaptureModal() {
   if (!captureModalOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={handleClose}
-    >
+    <>
+      {/* Upgrade Dialog */}
+      <AnimatePresence>
+        {showUpgradeDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowUpgradeDialog(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', duration: 0.5 }}
+              className="bg-card rounded-3xl max-w-sm w-full mx-4 overflow-hidden shadow-2xl border border-[#9D8BA7]/20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Decorative top accent */}
+              <div className="h-1.5 bg-gradient-to-r from-[#9D8BA7] to-[#C4B5CE]" />
+
+              <div className="p-6 text-center">
+                {/* Icon */}
+                <div className="mx-auto size-16 rounded-2xl bg-[#9D8BA7]/10 flex items-center justify-center mb-4">
+                  <Sparkles className="size-8 text-[#9D8BA7]" />
+                </div>
+
+                <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
+                  You've reached your Seed plan limit
+                </h3>
+
+                <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                  50 memories saved! Upgrade to <span className="font-semibold text-[#9D8BA7]">Bloom</span> for unlimited memories, advanced AI insights, and more.
+                </p>
+
+                {/* Upgrade button */}
+                <button
+                  className="w-full bg-[#9D8BA7] hover:bg-[#8A7A96] text-white rounded-xl h-11 text-sm font-semibold transition-colors mb-3"
+                  onClick={() => {
+                    setShowUpgradeDialog(false)
+                    // TODO: Navigate to upgrade flow
+                  }}
+                >
+                  Upgrade to Bloom
+                </button>
+
+                {/* Dismiss button */}
+                <button
+                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                  onClick={() => setShowUpgradeDialog(false)}
+                >
+                  Not now
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Capture Modal */}
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        onClick={handleClose}
+      >
       <div
         className="bg-card rounded-2xl max-w-lg w-full mx-4 overflow-hidden shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -672,6 +771,7 @@ function QuickCaptureModal() {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

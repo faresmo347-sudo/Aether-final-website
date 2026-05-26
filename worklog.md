@@ -28,21 +28,9 @@ Agent: Main Agent
 Task: Fix AI auto-tagging for images and voice memories in Aether
 
 Work Log:
-- Read all relevant source files: Dashboard.tsx, /api/ai/tags/route.ts, /api/ai/transcribe/route.ts, types.ts, aether-store.ts, MemoryDetail.tsx
-- Identified root causes:
-  - Image tagging: Image upload was mock-only (setImagePreview('mock')), content was hardcoded "Captured image", no VLM analysis
-  - Voice tagging: Transcription summary was generated but ignored by frontend, fallback tags were generic (#voice, #memo)
-  - Tags API: Prompts were not strong enough to prevent generic tags like #notes, #image, #voice
 - Created new API endpoint: /api/ai/analyze-image/route.ts using VLM (zai.chat.completions.createVision) to analyze image content and generate description + relevant tags
-- Rewrote /api/ai/tags/route.ts with:
-  - Type-specific system prompts (voice, image, link, text)
-  - Forbidden generic tags list (#notes, #memory, #voice, #image, #photo, etc.)
-  - Accepts optional summary and imageDescription parameters for richer context
-  - Fallback keyword-based tag extraction when LLM produces generic tags
-- Updated Dashboard.tsx QuickCaptureModal:
-  - Image: Actually reads file as base64, shows real image preview, calls /api/ai/analyze-image, displays VLM analysis with tags
-  - Voice: Captures and uses summary from transcribe endpoint, passes summary to tag generation, displays AI summary in UI
-  - Added smart fallback tags (getSmartFallbackTags) based on content keywords instead of generic type-based tags
+- Rewrote /api/ai/tags/route.ts with type-specific system prompts (voice, image, link, text), forbidden generic tags list, accepts optional summary and imageDescription parameters
+- Updated Dashboard.tsx QuickCaptureModal: Image upload now actually reads file as base64, shows real image preview, calls /api/ai/analyze-image, displays VLM analysis; Voice capture now captures and uses summary from transcribe endpoint
 - Updated MemoryDetail.tsx to show actual image preview for image memories
 
 Stage Summary:
@@ -52,5 +40,37 @@ Stage Summary:
 - Modified: /src/components/aether/MemoryDetail.tsx (image preview display for image memories)
 - All AI-generated tags are now content-relevant and specific
 - #voice, #image, #notes and other generic tags are explicitly forbidden
-- Voice memories now use transcription summary for richer tag generation
-- Image memories now use VLM to analyze actual image content
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Integrate Supabase into Aether for full authentication and database storage
+
+Work Log:
+- Installed @supabase/supabase-js and @supabase/ssr packages
+- Created Supabase client utilities: src/lib/supabase/client.ts (browser), src/lib/supabase/server.ts (server), src/lib/supabase/middleware.ts (session refresh)
+- Created middleware.ts for auth session refresh
+- Created comprehensive SQL schema in supabase-schema.sql with: profiles, memories, collections, memory_collections tables, RLS policies, auto-create profile/collections trigger
+- Created Supabase data access layer: src/lib/supabase/data.ts with auth, profiles, memories, collections, export functions
+- Built 3 auth screens: SignUp, SignIn, ForgotPassword in src/components/aether/Auth.tsx with Aether's premium design
+- Updated types.ts with auth views and Supabase fields
+- Updated Zustand store with auth state, collections, loading states, pagination
+- Updated page.tsx with full auth flow: session check on mount, auth state listener, auth protection, redirect to signin if not authenticated
+- Updated Dashboard to save memories to Supabase via createMemory() and check free tier limits (50 memories) with upgrade dialog
+- Updated Settings with sign out button, profile editing to Supabase, export from Supabase, dynamic subscription display, working dark mode toggle
+- Updated MemoryDetail with AI Insights section (calls /api/ai/insights) and "View Original Memory" toggle showing raw content per type
+- Created /api/ai/insights/route.ts endpoint for generating rich AI insights
+- Updated Collections to use Supabase data from store and create collections via API
+- Updated Recaps to derive top themes, week activity, and nostalgic memory from real user data
+- All lint checks pass, dev server running on port 3000
+
+Stage Summary:
+- Full Supabase authentication with sign up, sign in, forgot password
+- All memories stored in Supabase with RLS (users can only access their own data)
+- Default collections (Work, Ideas, Travel, Books, Recipes, Personal) auto-created on signup
+- Free tier limit of 50 memories with beautiful upgrade prompt
+- AI Insights section in Memory Detail with warm, conversational tone
+- "View Original Memory" toggle showing raw content
+- Profile editing, export, logout all connected to Supabase
+- Auth protection: unauthenticated users redirected to signin
+- Landing page "Enter Aether" button routes to signin if not authenticated

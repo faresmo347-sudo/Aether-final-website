@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { useAetherStore } from '@/store/aether-store'
+import { createClient } from '@/lib/supabase/client'
+import { getProfile, fetchMemories, fetchCollections } from '@/lib/supabase/data'
 import AppShell from '@/components/aether/AppShell'
 import Dashboard from '@/components/aether/Dashboard'
 import { MemoryDetail } from '@/components/aether/MemoryDetail'
@@ -10,6 +12,7 @@ import { AskAether } from '@/components/aether/AskAether'
 import { Collections } from '@/components/aether/Collections'
 import { Recaps } from '@/components/aether/Recaps'
 import { Settings } from '@/components/aether/Settings'
+import { SignUp, SignIn, ForgotPassword } from '@/components/aether/Auth'
 
 /* ═══════════════════════════════════════════════════════════════
    ANIMATED BACKGROUND — Canvas with floating gradient orbs
@@ -943,11 +946,23 @@ function AppContent() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MAIN PAGE — Routes between Landing and App
+   MAIN PAGE — Routes between Landing, Auth, and App
    ═══════════════════════════════════════════════════════════════ */
 
 export default function Home() {
-  const { currentView, setCurrentView, darkMode } = useAetherStore()
+  const {
+    currentView,
+    setCurrentView,
+    darkMode,
+    isAuthenticated,
+    setUser,
+    setProfile,
+    setMemories,
+    setCollections,
+    setIsLoadingMemories,
+    authScreen,
+    setAuthScreen,
+  } = useAetherStore()
 
   // Initialize dark mode from store on mount
   useEffect(() => {
@@ -958,14 +973,123 @@ export default function Home() {
     }
   }, [darkMode])
 
-  const handleEnterApp = useCallback(() => {
-    setCurrentView('dashboard')
-  }, [setCurrentView])
+  // Check auth state on mount and listen for changes
+  useEffect(() => {
+    const supabase = createClient()
 
+    // Check initial session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const profile = await getProfile(session.user.id)
+        if (profile) {
+          setUser(profile)
+          setProfile(profile)
+        }
+      }
+    }
+    checkSession()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const profile = await getProfile(session.user.id)
+          if (profile) {
+            setUser(profile)
+            setProfile(profile)
+          }
+          // Load user data
+          setIsLoadingMemories(true)
+          try {
+            const [memResult, collections] = await Promise.all([
+              fetchMemories(0),
+              fetchCollections(),
+            ])
+            setMemories(memResult.memories)
+            setCollections(collections)
+          } catch (err) {
+            console.error('Failed to load user data:', err)
+          } finally {
+            setIsLoadingMemories(false)
+          }
+          setCurrentView('dashboard')
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile({ name: '', email: '', initials: '' })
+          setMemories([])
+          setCollections([])
+          setCurrentView('landing')
+        }
+      }
+    )
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [setUser, setProfile, setMemories, setCollections, setIsLoadingMemories, setCurrentView])
+
+  // Load data when app opens (if already authenticated)
+  useEffect(() => {
+    if (isAuthenticated && currentView === 'dashboard') {
+      const loadData = async () => {
+        setIsLoadingMemories(true)
+        try {
+          const [memResult, collections] = await Promise.all([
+            fetchMemories(0),
+            fetchCollections(),
+          ])
+          setMemories(memResult.memories)
+          setCollections(collections)
+        } catch (err) {
+          console.error('Failed to load data:', err)
+        } finally {
+          setIsLoadingMemories(false)
+        }
+      }
+      loadData()
+    }
+  }, [isAuthenticated, currentView, setMemories, setCollections, setIsLoadingMemories])
+
+  const handleEnterApp = useCallback(() => {
+    if (isAuthenticated) {
+      setCurrentView('dashboard')
+    } else {
+      setCurrentView('signin')
+    }
+  }, [isAuthenticated, setCurrentView])
+
+  const handleAuthSwitch = useCallback((screen: 'signup' | 'signin' | 'forgot') => {
+    setAuthScreen(screen)
+    setCurrentView(screen === 'forgot' ? 'forgot-password' : screen)
+  }, [setAuthScreen, setCurrentView])
+
+  const handleAuthSuccess = useCallback(() => {
+    // Auth state change listener will handle the rest
+  }, [])
+
+  // Render auth screens
+  if (currentView === 'signup') {
+    return <SignUp onSwitch={handleAuthSwitch} onSuccess={handleAuthSuccess} />
+  }
+  if (currentView === 'signin') {
+    return <SignIn onSwitch={handleAuthSwitch} onSuccess={handleAuthSuccess} />
+  }
+  if (currentView === 'forgot-password') {
+    return <ForgotPassword onSwitch={handleAuthSwitch} onSuccess={handleAuthSuccess} />
+  }
+
+  // Landing page
   if (currentView === 'landing') {
     return <LandingPage onEnterApp={handleEnterApp} />
   }
 
+  // If trying to access app but not authenticated, redirect to signin
+  if (!isAuthenticated) {
+    return <SignIn onSwitch={handleAuthSwitch} onSuccess={handleAuthSuccess} />
+  }
+
+  // App views
   return (
     <AppShell>
       <AppContent />

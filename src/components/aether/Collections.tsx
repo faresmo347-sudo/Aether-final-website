@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   Plus,
@@ -28,8 +28,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog'
-import { mockCollections, allTags } from './mock-data'
 import { useAetherStore } from '@/store/aether-store'
+import { createCollection as createCollectionDb } from '@/lib/supabase/data'
 import type { Collection } from './types'
 
 /* ─────────── Icon Registry ─────────── */
@@ -74,23 +74,46 @@ const formatDate = (dateStr: string) => {
 /* ─────────── Collections Component ─────────── */
 
 export function Collections() {
-  const { setCurrentView, setCollectionFilter } = useAetherStore()
-  const [collections, setCollections] = useState<Collection[]>(mockCollections)
+  const { setCurrentView, setCollectionFilter, collections, memories, addCollection } = useAetherStore()
   const [createOpen, setCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [selectedIcon, setSelectedIcon] = useState<string>('briefcase')
 
-  const handleCreate = () => {
-    if (!newName.trim()) return
-    const newCollection: Collection = {
-      id: `col-${Date.now()}`,
-      name: newName.trim(),
-      icon: selectedIcon,
-      memoryCount: 0,
-      lastUpdated: new Date().toISOString().split('T')[0],
-      color: '#9D8BA7',
+  // Build tag cloud from actual memories
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const mem of memories) {
+      for (const tag of mem.tags) {
+        counts[tag] = (counts[tag] || 0) + 1
+      }
     }
-    setCollections((prev) => [...prev, newCollection])
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }))
+  }, [memories])
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return
+    try {
+      const newCollection = await createCollectionDb({
+        name: newName.trim(),
+        icon: selectedIcon,
+        color: '#9D8BA7',
+      })
+      addCollection(newCollection)
+    } catch (err) {
+      console.error('Failed to create collection:', err)
+      // Fallback: add locally
+      const fallback: Collection = {
+        id: `col-${Date.now()}`,
+        name: newName.trim(),
+        icon: selectedIcon,
+        memoryCount: 0,
+        lastUpdated: new Date().toISOString().split('T')[0],
+        color: '#9D8BA7',
+      }
+      addCollection(fallback)
+    }
     setNewName('')
     setSelectedIcon('briefcase')
     setCreateOpen(false)
@@ -176,7 +199,7 @@ export function Collections() {
             Your Tags
           </h2>
           <div className="flex flex-wrap gap-2">
-            {allTags.map((tag, index) => (
+            {tagCounts.map((tag, index) => (
               <motion.button
                 key={tag.name}
                 initial={{ opacity: 0, scale: 0.8 }}

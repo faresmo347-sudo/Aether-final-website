@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Brain, CheckCircle2, Circle, Calendar, TrendingUp, Clock, Sparkles, Mic, Link2, Image as ImageIcon, FileText } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -11,29 +11,6 @@ const mockTasks = [
   { id: 't2', text: 'Follow up with Sarah about book recommendation', completed: false },
   { id: 't3', text: 'Research fintech micro-lending platforms', completed: false },
 ]
-
-const weekDays = [
-  { day: 'Mon', activity: 3, memories: 3 },
-  { day: 'Tue', activity: 5, memories: 5 },
-  { day: 'Wed', activity: 7, memories: 7, isHighlight: true },
-  { day: 'Thu', activity: 4, memories: 4 },
-  { day: 'Fri', activity: 2, memories: 2 },
-  { day: 'Sat', activity: 1, memories: 1 },
-  { day: 'Sun', activity: 0, memories: 0 },
-]
-
-const topThemes = [
-  { name: '#startup', count: 3 },
-  { name: '#ideas', count: 4 },
-  { name: '#work', count: 5 },
-  { name: '#ai', count: 2 },
-]
-
-const nostalgicMemory = {
-  title: 'First whiteboard session of the year',
-  content: 'Kicked off January with a brainstorm about the new product direction. The energy in the room was electric — everyone excited about the AI-powered features roadmap.',
-  date: 'Dec 15, 2024',
-}
 
 export function Recaps() {
   const { recapView, setRecapView, memories } = useAetherStore()
@@ -48,13 +25,62 @@ export function Recaps() {
 
   const recentMemories = memories.slice(0, 4)
 
+  // Derive top themes from real memories
+  const topThemes = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const mem of memories) {
+      for (const tag of mem.tags) {
+        counts[tag] = (counts[tag] || 0) + 1
+      }
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }))
+  }, [memories])
+
+  // Derive week activity from real memories
+  const weekDays = useMemo(() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const counts = [0, 0, 0, 0, 0, 0, 0]
+    const now = new Date()
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() - now.getDay() + 1) // Monday
+    for (const mem of memories) {
+      const memDate = new Date(mem.createdAt)
+      const diffDays = Math.floor((now.getTime() - memDate.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays < 7) {
+        const dayIdx = memDate.getDay() === 0 ? 6 : memDate.getDay() - 1 // Mon=0...Sun=6
+        counts[dayIdx]++
+      }
+    }
+    const maxCount = Math.max(...counts, 1)
+    return days.map((day, i) => ({
+      day,
+      activity: counts[i],
+      memories: counts[i],
+      isHighlight: counts[i] === maxCount && counts[i] > 0,
+    }))
+  }, [memories])
+
+  const maxActivity = Math.max(...weekDays.map((d) => d.activity), 1)
+
+  // Nostalgic memory - oldest memory
+  const nostalgicMemory = useMemo(() => {
+    if (memories.length === 0) return { title: 'No memories yet', content: 'Start capturing to see your memory lane.', date: '' }
+    const oldest = memories[memories.length - 1]
+    return {
+      title: oldest.title,
+      content: oldest.content,
+      date: new Date(oldest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    }
+  }, [memories])
+
   const toggleTask = (taskId: string) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
     )
   }
-
-  const maxActivity = Math.max(...weekDays.map((d) => d.activity), 1)
 
   return (
     <div className="min-h-screen bg-background">

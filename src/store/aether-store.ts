@@ -1,24 +1,30 @@
 import { create } from 'zustand'
-import type { AppView, Memory, CaptureTab, RecapView, ChatMessage } from '@/components/aether/types'
-import { mockMemories } from '@/components/aether/mock-data'
-
-export interface UserProfile {
-  name: string
-  email: string
-  initials: string
-}
+import type { AppView, Memory, CaptureTab, RecapView, ChatMessage, UserProfile, Collection } from '@/components/aether/types'
 
 interface AetherState {
+  // Auth
+  user: UserProfile | null
+  setUser: (user: UserProfile | null) => void
+  isAuthenticated: boolean
+  authScreen: 'signup' | 'signin' | 'forgot'
+  setAuthScreen: (screen: 'signup' | 'signin' | 'forgot') => void
+
   // Navigation
   currentView: AppView
   setCurrentView: (view: AppView) => void
 
   // Memories
   memories: Memory[]
+  setMemories: (memories: Memory[]) => void
   addMemory: (memory: Memory) => void
   deleteMemory: (id: string) => void
   selectedMemoryId: string | null
   setSelectedMemoryId: (id: string | null) => void
+
+  // Collections
+  collections: Collection[]
+  setCollections: (collections: Collection[]) => void
+  addCollection: (collection: Collection) => void
 
   // Quick Capture
   captureModalOpen: boolean
@@ -39,6 +45,7 @@ interface AetherState {
   // Chat
   chatMessages: ChatMessage[]
   addChatMessage: (msg: ChatMessage) => void
+  clearChatMessages: () => void
   isChatThinking: boolean
   setChatThinking: (v: boolean) => void
 
@@ -61,19 +68,46 @@ interface AetherState {
   // Profile
   profile: UserProfile
   setProfile: (p: UserProfile) => void
+
+  // Loading states
+  isLoadingMemories: boolean
+  setIsLoadingMemories: (v: boolean) => void
+  isLoadingCollections: boolean
+  setIsLoadingCollections: (v: boolean) => void
+
+  // Pagination
+  memoriesPage: number
+  hasMoreMemories: boolean
+  setHasMoreMemories: (v: boolean) => void
+  incrementPage: () => void
+  resetPage: () => void
+  appendMemories: (memories: Memory[]) => void
 }
 
 export const useAetherStore = create<AetherState>((set) => ({
+  // Auth
+  user: null,
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  isAuthenticated: false,
+  authScreen: 'signin',
+  setAuthScreen: (screen) => set({ authScreen: screen }),
+
   // Navigation
   currentView: 'landing',
   setCurrentView: (view) => set({ currentView: view }),
 
   // Memories
-  memories: mockMemories,
+  memories: [],
+  setMemories: (memories) => set({ memories }),
   addMemory: (memory) => set((s) => ({ memories: [memory, ...s.memories] })),
   deleteMemory: (id) => set((s) => ({ memories: s.memories.filter((m) => m.id !== id) })),
   selectedMemoryId: null,
   setSelectedMemoryId: (id) => set({ selectedMemoryId: id }),
+
+  // Collections
+  collections: [],
+  setCollections: (collections) => set({ collections }),
+  addCollection: (collection) => set((s) => ({ collections: [...s.collections, collection] })),
 
   // Quick Capture
   captureModalOpen: false,
@@ -94,6 +128,7 @@ export const useAetherStore = create<AetherState>((set) => ({
   // Chat
   chatMessages: [],
   addChatMessage: (msg) => set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
+  clearChatMessages: () => set({ chatMessages: [] }),
   isChatThinking: false,
   setChatThinking: (v) => set({ isChatThinking: v }),
 
@@ -117,6 +152,20 @@ export const useAetherStore = create<AetherState>((set) => ({
   },
 
   // Profile
-  profile: { name: 'Alex Johnson', email: 'alex@aether.app', initials: 'AJ' },
+  profile: { name: '', email: '', initials: '' },
   setProfile: (p) => set({ profile: p }),
+
+  // Loading states
+  isLoadingMemories: false,
+  setIsLoadingMemories: (v) => set({ isLoadingMemories: v }),
+  isLoadingCollections: false,
+  setIsLoadingCollections: (v) => set({ isLoadingCollections: v }),
+
+  // Pagination
+  memoriesPage: 0,
+  hasMoreMemories: true,
+  setHasMoreMemories: (v) => set({ hasMoreMemories: v }),
+  incrementPage: () => set((s) => ({ memoriesPage: s.memoriesPage + 1 })),
+  resetPage: () => set({ memoriesPage: 0, hasMoreMemories: true }),
+  appendMemories: (newMemories) => set((s) => ({ memories: [...s.memories, ...newMemories] })),
 }))
