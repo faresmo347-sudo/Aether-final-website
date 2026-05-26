@@ -17,6 +17,7 @@ import { Recaps } from '@/components/aether/Recaps'
 import { Settings } from '@/components/aether/Settings'
 import { SignUp, SignIn, ForgotPassword } from '@/components/aether/Auth'
 import { AetherLogo } from '@/components/aether/AetherLogo'
+import type { AppView } from '@/components/aether/types'
 
 /* ═══════════════════════════════════════════════════════════════
    ANIMATED BACKGROUND — Canvas with floating gradient orbs
@@ -1046,7 +1047,48 @@ export default function Home() {
     updateMemory,
     authScreen,
     setAuthScreen,
+    setSelectedMemoryId,
   } = useAetherStore()
+
+  // URL-based navigation: read the current URL path to determine which view to show.
+  // This ensures that direct links like /dashboard, /ask, /collections work correctly.
+  // The middleware rewrites all paths to / but the browser URL stays the same,
+  // so we can read window.location.pathname to determine the desired view.
+  const navigateFromUrl = useCallback(() => {
+    if (typeof window === 'undefined') return
+    const path = window.location.pathname.replace(/\/$/, '') // remove trailing slash
+
+    const urlToViewMap: Record<string, AppView> = {
+      '/dashboard': 'dashboard',
+      '/ask': 'ask-aether',
+      '/collections': 'collections',
+      '/recaps': 'recaps',
+      '/settings': 'settings',
+      '/signup': 'signup',
+      '/signin': 'signin',
+      '/forgot-password': 'forgot-password',
+    }
+
+    const view = urlToViewMap[path]
+    if (view) {
+      // For auth views, also update the auth screen
+      if (view === 'signup' || view === 'signin' || view === 'forgot-password') {
+        setAuthScreen(view === 'forgot-password' ? 'forgot' : view)
+      }
+      return view
+    }
+
+    // Check for memory detail URL pattern: /memory/{id}
+    if (path.startsWith('/memory/')) {
+      const memoryId = path.replace('/memory/', '')
+      if (memoryId) {
+        setSelectedMemoryId(memoryId)
+        return 'memory-detail'
+      }
+    }
+
+    return null
+  }, [setAuthScreen, setSelectedMemoryId])
 
   // Track whether initial data has been loaded for this session
   const dataLoadedRef = useRef(false)
@@ -1137,7 +1179,9 @@ export default function Home() {
       if (!mounted) return
       if (session?.user) {
         await loadUserData(session.user.id)
-        setCurrentView('dashboard')
+        // Check URL for deep-link navigation, otherwise go to dashboard
+        const urlView = navigateFromUrl()
+        setCurrentView(urlView && urlView !== 'signup' && urlView !== 'signin' && urlView !== 'forgot-password' ? urlView : 'dashboard')
       } else {
         // No session in cookies — try getUser() which validates with
         // Supabase's server (handles expired tokens that need refresh)
@@ -1145,9 +1189,17 @@ export default function Home() {
           const { data: { user } } = await supabase.auth.getUser()
           if (user && mounted) {
             await loadUserData(user.id)
-            setCurrentView('dashboard')
+            // Check URL for deep-link navigation, otherwise go to dashboard
+            const urlView = navigateFromUrl()
+            setCurrentView(urlView && urlView !== 'signup' && urlView !== 'signin' && urlView !== 'forgot-password' ? urlView : 'dashboard')
           } else if (mounted) {
-            setCurrentView('landing')
+            // Not authenticated — check if URL indicates an auth view
+            const urlView = navigateFromUrl()
+            if (urlView === 'signup' || urlView === 'signin' || urlView === 'forgot-password') {
+              setCurrentView(urlView)
+            } else {
+              setCurrentView('landing')
+            }
           }
         } catch {
           if (mounted) setCurrentView('landing')
@@ -1192,7 +1244,7 @@ export default function Home() {
       unsubComplete()
       window.removeEventListener('aether:memory-synced', handleMemorySynced)
     }
-  }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView, setIsSessionLoading, setIsSyncing, setPendingSyncCount, setLastSyncedAt, updateMemory])
+  }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView, setIsSessionLoading, setIsSyncing, setPendingSyncCount, setLastSyncedAt, updateMemory, navigateFromUrl])
 
   // "Enter Aether" on the landing page should go to signup for new users
   const handleEnterApp = useCallback(() => {

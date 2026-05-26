@@ -1,12 +1,64 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  /* config options here */
+  // NOTE: "output: standalone" was removed — it's for Docker/self-hosted
+  // deployment and breaks Vercel. Vercel handles the build output natively.
+
   typescript: {
+    // Keep ignoreBuildErrors for development velocity.
+    // Remove for strict production builds.
     ignoreBuildErrors: true,
   },
+
   reactStrictMode: false,
+
+  // Ensure all env vars are available at build time and runtime
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  },
+
+  // Headers for security and caching
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+      {
+        // Cache static assets aggressively
+        source: "/aether-icon.svg",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/aether-logo.png",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

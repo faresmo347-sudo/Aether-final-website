@@ -1,25 +1,26 @@
 ---
 Task ID: 1
-Agent: Main
-Task: Implement full offline-first architecture for Aether web app
+Agent: main
+Task: Fix sandbox inactive errors, preview errors, environment configuration, routing, build configuration, and deployment readiness
 
 Work Log:
-- Created `src/lib/offline-db.ts` — IndexedDB wrapper for caching memories, collections, sync queue, and meta data
-- Created `src/hooks/use-online-status.ts` — React hook using useSyncExternalStore for online/offline detection
-- Created `src/lib/sync-engine.ts` — Background sync engine with conflict resolution, delta sync, auto-sync on reconnect
-- Updated `src/components/aether/types.ts` — Added `syncStatus` field to Memory type
-- Updated `src/store/aether-store.ts` — Added offline/sync state (isOnline, isSyncing, pendingSyncCount, lastSyncedAt, showOfflineBanner)
-- Updated `src/lib/supabase/data.ts` — All data operations are now offline-aware: fetchMemories falls back to cache, createMemory saves to IndexedDB and queues for sync, updateMemoryById/deleteMemoryById queue operations when offline
-- Updated `src/components/aether/Dashboard.tsx` — Added sync indicator to MemoryCard, handleSave detects offline and marks memories with syncStatus='pending', skips AI tagging when offline
-- Updated `src/components/aether/AskAether.tsx` — Offline keyword search through cached memories with "Searching your cached memories" note
-- Updated `src/components/aether/AppShell.tsx` — Added OfflineBanner component showing offline/syncing/pending states
-- Updated `src/components/aether/Settings.tsx` — Offline-aware profile updates and exports with appropriate toast messages
-- Updated `src/components/aether/MemoryDetail.tsx` — Offline-aware edit and tag operations with sync messages
-- Updated `src/app/page.tsx` — Initialize offline DB on mount, listen for sync events, fallback to cached data on network errors, handle memory-synced events for temp ID replacement
-- Build passes successfully, lint passes cleanly
+- Audited all core files: page.tsx, store, supabase clients, auth, offline-db, sync-engine
+- Identified root cause: missing Next.js middleware/proxy for SPA routing and Supabase session refresh
+- Created proper proxy.ts (Next.js 16 uses proxy.ts, not middleware.ts) with:
+  - Supabase session refresh via updateSession()
+  - SPA rewrite: /dashboard, /ask, /collections, /settings, /recaps all rewrite to / while preserving URL
+  - Skips API routes, static assets, and auth callback
+- Fixed next.config.ts: removed `output: "standalone"` (breaks Vercel), added security headers
+- Added URL-based navigation to page.tsx: navigateFromUrl() reads window.location.pathname on load
+- Added env var validation with graceful fallbacks to supabase/client.ts, server.ts, middleware.ts
+- Created .env.example with all required variables documented
+- Created vercel.json for Vercel deployment
+- Verified no hardcoded localhost URLs in src/
+- All routes tested: /, /dashboard, /ask, /collections, /settings, /recaps all return 200
+- Lint passes cleanly
 
 Stage Summary:
-- Complete offline-first architecture implemented
-- 4 new files created (offline-db.ts, use-online-status.ts, sync-engine.ts)
-- 8 existing files updated
-- All features: offline memory reading, offline capture with sync queue, offline Ask Aether search, offline banner, smart sync with conflict resolution, auto-sync on reconnect
+- Root cause was missing proxy.ts (Next.js 16's replacement for middleware.ts) for session refresh + SPA rewrites
+- All routes now work via direct URL access thanks to proxy rewrite + client-side URL reading
+- App is Vercel-ready with proper vercel.json, .env.example, and no hardcoded values
+- Environment variables have graceful fallbacks — app won't crash if Supabase isn't configured

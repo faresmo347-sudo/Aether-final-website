@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   // If "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/'
+
+  // If Supabase is not configured, redirect to home
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return NextResponse.redirect(`${origin}`)
+  }
 
   if (code) {
     // Create a Supabase server client with proper cookie handling
