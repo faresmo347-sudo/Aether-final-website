@@ -1078,30 +1078,53 @@ export default function Home() {
     }
   }, [setUser, setProfile, setMemories, setCollections, setIsLoadingMemories])
 
-  // Check auth state on mount and listen for changes
-  // onAuthStateChange fires INITIAL_SESSION immediately when subscribed,
-  // which handles session restoration across tabs and new windows.
-  // We also call getUser() as a fallback in case INITIAL_SESSION doesn't fire.
+  // Check auth state on mount and listen for changes.
+  // Strategy: Call getSession() immediately for fast session restoration,
+  // then subscribe to onAuthStateChange for ongoing lifecycle events.
   useEffect(() => {
     const supabase = createClient()
-    let initialSessionHandled = false
+    let mounted = true
 
-    // Listen for auth state changes — handles all session lifecycle events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // INITIAL_SESSION: fires when client hydrates with existing session.
-        // This is the primary mechanism for restoring sessions across tabs/new windows.
-        if (event === 'INITIAL_SESSION') {
-          initialSessionHandled = true
-          if (session?.user) {
-            await loadUserData(session.user.id)
+    // Immediately check for existing session — this is the fastest way
+    // to restore a session when opening in a new tab or from a link.
+    // getSession() reads from local cookie storage (no network request),
+    // so it returns instantly.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return
+      if (session?.user) {
+        await loadUserData(session.user.id)
+        setCurrentView('dashboard')
+      } else {
+        // No session in cookies — try getUser() which validates with
+        // Supabase's server (handles expired tokens that need refresh)
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && mounted) {
+            await loadUserData(user.id)
             setCurrentView('dashboard')
-          } else {
+          } else if (mounted) {
             setCurrentView('landing')
           }
-          setIsSessionLoading(false)
-          return
+        } catch {
+          if (mounted) setCurrentView('landing')
         }
+      }
+      if (mounted) setIsSessionLoading(false)
+    }).catch(async () => {
+      if (mounted) {
+        setCurrentView('landing')
+        setIsSessionLoading(false)
+      }
+    })
+
+    // Also subscribe to auth state changes for ongoing events
+    // (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return
+
+        // Skip INITIAL_SESSION — we already handled it above with getSession()
+        if (event === 'INITIAL_SESSION') return
 
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
           dataLoadedRef.current = false
@@ -1118,29 +1141,9 @@ export default function Home() {
       }
     )
 
-    // Fallback: if INITIAL_SESSION didn't fire within 3 seconds,
-    // manually check the session using getUser() which validates with
-    // Supabase's server (handles token refresh)
-    const fallbackTimer = setTimeout(async () => {
-      if (initialSessionHandled) return
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          await loadUserData(user.id)
-          setCurrentView('dashboard')
-        } else {
-          setCurrentView('landing')
-        }
-      } catch {
-        setCurrentView('landing')
-      } finally {
-        setIsSessionLoading(false)
-      }
-    }, 3000)
-
     return () => {
+      mounted = false
       subscription.unsubscribe()
-      clearTimeout(fallbackTimer)
     }
   }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView, setIsSessionLoading])
 

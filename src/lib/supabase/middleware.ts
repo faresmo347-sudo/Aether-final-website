@@ -19,12 +19,17 @@ export async function updateSession(request: NextRequest) {
         )
         // Then create a new response with the updated cookies
         supabaseResponse = NextResponse.next({ request })
-        // Set cookies on the response so the browser persists them
+        // Set cookies on the response so the browser persists them.
+        // Always use path=/ so cookies are visible on all routes and persist
+        // when opening in new tabs or from direct links.
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, {
             ...options,
             sameSite: 'lax',
             path: '/',
+            // Set a long max-age so sessions persist across browser restarts.
+            // Supabase manages the actual token expiry independently.
+            maxAge: options.maxAge ?? 60 * 60 * 24 * 365, // 1 year default
           })
         )
       },
@@ -40,10 +45,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protected routes — redirect to landing if not authenticated
-  // (All app views are handled client-side via Zustand, so no server-side
-  // route protection is needed. The middleware only ensures session cookies
-  // are refreshed.)
+  // Session refresh is handled above via getUser().
+  // All app views are managed client-side via Zustand state,
+  // so no server-side route protection is needed here.
 
   return supabaseResponse
 }

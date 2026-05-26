@@ -23,13 +23,17 @@ export function createClient() {
       setAll(cookiesToSet) {
         if (typeof document === 'undefined') return
         cookiesToSet.forEach(({ name, value, options }) => {
-          let cookieString = `${name}=${value}`
-          if (options.path) cookieString += `; path=${options.path}`
+          // Always set path=/ to ensure cookies are visible across all routes
+          // and persist when opening in a new tab or from a link.
+          // Without this, cookies default to the current URL path, which can
+          // cause session loss when navigating between tabs.
+          let cookieString = `${name}=${value}; path=${options.path ?? '/'}`
           if (options.maxAge !== undefined) cookieString += `; max-age=${options.maxAge}`
           if (options.domain) cookieString += `; domain=${options.domain}`
           if (options.sameSite) cookieString += `; samesite=${options.sameSite}`
           if (options.secure) cookieString += '; secure'
-          if (options.httpOnly) cookieString += '; httponly'
+          // Note: httpOnly cookies cannot be set via document.cookie (browser restriction).
+          // Supabase auth tokens don't need httpOnly since they're read client-side.
           document.cookie = cookieString
         })
       },

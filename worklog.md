@@ -1,20 +1,20 @@
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Fix persistent login not working when opening from a link or new tab
+Task: Fix website not working when opening in new tab or via direct link
 
 Work Log:
-- Identified root causes: no singleton Supabase client, missing INITIAL_SESSION handling, no auth callback route, missing OAuth redirect URL, middleware not setting cookie options
-- Created singleton Supabase client in `src/lib/supabase/client.ts` to prevent multiple instances from losing session state
-- Fixed session check in `src/app/page.tsx` to use `onAuthStateChange` with `INITIAL_SESSION` event as primary mechanism, plus `getUser()` as fallback
-- Added `TOKEN_REFRESHED` event handling in `onAuthStateChange` to maintain sessions when tokens refresh
-- Fixed Google OAuth redirect URL in both SignUp and SignIn components to use `/auth/callback` route
-- Created `src/app/auth/callback/route.ts` for proper OAuth code exchange (PKCE flow)
-- Updated middleware in `src/lib/supabase/middleware.ts` to set proper cookie options (sameSite: lax, path: /)
-- Added 3-second fallback timer for edge cases where INITIAL_SESSION doesn't fire
-- All lint checks pass
-- Dev server running and responding with 200 OK
+- Diagnosed root causes: (1) Supabase client cookies not always set with path=/, (2) session restoration too slow (3-sec fallback), (3) auth callback not setting cookies with path=/
+- Fixed src/lib/supabase/client.ts — Always set path=/ on cookies to ensure they persist across tabs and new windows
+- Fixed src/lib/supabase/middleware.ts — Set path=/ and long maxAge on server-side cookies for session refresh
+- Fixed src/app/auth/callback/route.ts — Properly create Supabase server client with cookie handling, set path=/ on all cookies
+- Fixed src/app/page.tsx — Replaced slow onAuthStateChange/INITIAL_SESSION pattern with immediate getSession() call for instant session restoration
+- Fixed src/store/aether-store.ts — Removed direct localStorage access in store initializer that could cause hydration mismatch
 
 Stage Summary:
-- Session persistence now works via: (1) Singleton client ensures shared state, (2) INITIAL_SESSION event restores session on new tabs/windows, (3) Auth callback route handles OAuth code exchange, (4) Middleware refreshes sessions with proper cookie attributes
-- Key files changed: `src/lib/supabase/client.ts`, `src/app/page.tsx`, `src/components/aether/Auth.tsx`, `src/lib/supabase/middleware.ts`, `src/app/auth/callback/route.ts` (new)
+- Key fix: Cookie path=/ ensures Supabase auth tokens are visible on all routes and persist when opening in new tabs
+- Key fix: getSession() is called immediately on mount instead of waiting for INITIAL_SESSION event (which could be slow or unreliable)
+- Key fix: getUser() fallback handles expired tokens that need server-side refresh
+- Auth callback now properly sets session cookies with path=/ for Google OAuth
+- Middleware sets long maxAge (1 year) so session cookies survive browser restarts
+- Lint passes cleanly, server returns 200
