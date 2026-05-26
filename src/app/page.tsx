@@ -995,7 +995,7 @@ function Pricing() {
       name: 'Seed',
       subtitle: 'Free Tier',
       price: '0',
-      currency: 'EGP',
+      currency: '$',
       period: '/month',
       features: [
         { text: '50 memories per month', included: true },
@@ -1013,8 +1013,8 @@ function Pricing() {
     {
       name: 'Bloom',
       subtitle: 'Premium Tier',
-      price: '99',
-      currency: 'EGP',
+      price: '5.99',
+      currency: '$',
       period: '/month',
       features: [
         { text: 'Unlimited memories', included: true },
