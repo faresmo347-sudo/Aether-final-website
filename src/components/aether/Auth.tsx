@@ -213,7 +213,12 @@ export function SignUp({ onSwitch, onSuccess }: AuthProps) {
             type="button"
             onClick={async () => {
               const supabase = createClient()
-              await supabase.auth.signInWithOAuth({ provider: 'google' })
+              await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                },
+              })
             }}
             className="w-full h-12 rounded-xl text-sm font-medium bg-white border border-[#1a1a2e]/10 text-[#1a1a2e]/70 hover:bg-[#FFFAF5] hover:border-[#1a1a2e]/20 transition-all duration-200 flex items-center justify-center gap-3"
           >
@@ -417,7 +422,12 @@ export function SignIn({ onSwitch, onSuccess }: AuthProps) {
             type="button"
             onClick={async () => {
               const supabase = createClient()
-              await supabase.auth.signInWithOAuth({ provider: 'google' })
+              await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                },
+              })
             }}
             className="w-full h-12 rounded-xl text-sm font-medium bg-white border border-[#1a1a2e]/10 text-[#1a1a2e]/70 hover:bg-[#FFFAF5] hover:border-[#1a1a2e]/20 transition-all duration-200 flex items-center justify-center gap-3"
           >

@@ -1072,32 +1072,38 @@ export default function Home() {
       setCollections(collections)
     } catch (err) {
       console.error('Failed to load user data:', err)
+      // Don't block the user from using the app if data load fails
     } finally {
       setIsLoadingMemories(false)
     }
   }, [setUser, setProfile, setMemories, setCollections, setIsLoadingMemories])
 
   // Check auth state on mount and listen for changes
+  // onAuthStateChange fires INITIAL_SESSION immediately when subscribed,
+  // which handles session restoration across tabs and new windows.
+  // We also call getUser() as a fallback in case INITIAL_SESSION doesn't fire.
   useEffect(() => {
     const supabase = createClient()
+    let initialSessionHandled = false
 
-    // Check initial session — load data immediately if already signed in
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setIsSessionLoading(false)
-      if (session?.user) {
-        await loadUserData(session.user.id)
-        setCurrentView('dashboard')
-      } else {
-        setCurrentView('landing')
-      }
-    }
-    checkSession()
-
-    // Listen for auth state changes
+    // Listen for auth state changes — handles all session lifecycle events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
+        // INITIAL_SESSION: fires when client hydrates with existing session.
+        // This is the primary mechanism for restoring sessions across tabs/new windows.
+        if (event === 'INITIAL_SESSION') {
+          initialSessionHandled = true
+          if (session?.user) {
+            await loadUserData(session.user.id)
+            setCurrentView('dashboard')
+          } else {
+            setCurrentView('landing')
+          }
+          setIsSessionLoading(false)
+          return
+        }
+
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
           dataLoadedRef.current = false
           await loadUserData(session.user.id)
           setCurrentView('dashboard')
@@ -1112,8 +1118,29 @@ export default function Home() {
       }
     )
 
+    // Fallback: if INITIAL_SESSION didn't fire within 3 seconds,
+    // manually check the session using getUser() which validates with
+    // Supabase's server (handles token refresh)
+    const fallbackTimer = setTimeout(async () => {
+      if (initialSessionHandled) return
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await loadUserData(user.id)
+          setCurrentView('dashboard')
+        } else {
+          setCurrentView('landing')
+        }
+      } catch {
+        setCurrentView('landing')
+      } finally {
+        setIsSessionLoading(false)
+      }
+    }, 3000)
+
     return () => {
       subscription.unsubscribe()
+      clearTimeout(fallbackTimer)
     }
   }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView, setIsSessionLoading])
 
@@ -1132,9 +1159,12 @@ export default function Home() {
     setCurrentView(screen === 'forgot' ? 'forgot-password' : screen)
   }, [setAuthScreen, setCurrentView])
 
-  // After auth success, the onAuthStateChange listener handles data loading + navigation
+  // After auth success — the onAuthStateChange listener handles data loading + navigation.
+  // This callback exists as a safety net for cases where onAuthStateChange fires
+  // before the Auth component's onSuccess prop is called.
   const handleAuthSuccess = useCallback(() => {
-    // Auth state change listener will handle data loading and navigation
+    // The SIGNED_IN event in onAuthStateChange handles everything.
+    // No additional action needed here.
   }, [])
 
   // Show loading splash while session is being checked
