@@ -4,6 +4,7 @@ import { ReactNode, memo, useMemo } from 'react'
 import { Brain, FolderOpen, Settings, Search, Plus, Home } from 'lucide-react'
 import { useAetherStore } from '@/store/aether-store'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { AetherLogo } from '@/components/aether/AetherLogo'
 import type { AppView } from '@/components/aether/types'
 
 /* ─────────── Navigation Configuration ─────────── */
@@ -118,12 +119,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <aside className="hidden md:flex md:flex-col md:w-64 bg-card border-r border-border fixed inset-y-0 left-0 z-40">
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-6 border-b border-border">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center shadow-lg shadow-[#9D8BA7]/20">
-            <Brain size={18} className="text-white" />
-          </div>
-          <span className="font-serif text-xl font-bold text-foreground tracking-tight">
-            Aether
-          </span>
+          <AetherLogo size={36} showText />
         </div>
 
         {/* Navigation */}
@@ -161,9 +157,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3 px-4 h-12 safe-area-top">
             {/* Brain logo */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center shadow-md shadow-[#9D8BA7]/20">
-                <Brain size={12} className="text-white" />
-              </div>
+              <AetherLogo size={28} />
             </div>
 
             {/* Compact search pill - tappable to open Ask Aether */}

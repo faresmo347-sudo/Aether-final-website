@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, Mail, Lock, User, ArrowLeft, Check, Loader2 } from 'lucide-react'
+import { Mail, Lock, User, ArrowLeft, Check, Loader2 } from 'lucide-react'
+import { AetherLogo } from '@/components/aether/AetherLogo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -97,9 +98,7 @@ function AuthBackground() {
 function AetherBrainLogo() {
   return (
     <div className="flex flex-col items-center gap-3 mb-6">
-      <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center shadow-lg shadow-[#9D8BA7]/25">
-        <Brain size={26} className="text-white" />
-      </div>
+      <AetherLogo size={56} />
       <span className="font-serif text-2xl font-bold text-[#1a1a2e] tracking-tight">
         Aether
       </span>

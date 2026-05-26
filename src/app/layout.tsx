@@ -30,7 +30,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Aether" }],
   icons: {
-    icon: "/aether-logo.png",
+    icon: [
+      { url: "/aether-icon.svg", type: "image/svg+xml" },
+      { url: "/aether-logo.png", type: "image/png", sizes: "1024x1024" },
+    ],
+    apple: "/aether-logo.png",
   },
   openGraph: {
     title: "Aether — Your AI-Powered Second Brain",

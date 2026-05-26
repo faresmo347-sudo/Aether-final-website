@@ -14,6 +14,7 @@ import { Collections } from '@/components/aether/Collections'
 import { Recaps } from '@/components/aether/Recaps'
 import { Settings } from '@/components/aether/Settings'
 import { SignUp, SignIn, ForgotPassword } from '@/components/aether/Auth'
+import { AetherLogo } from '@/components/aether/AetherLogo'
 
 /* ═══════════════════════════════════════════════════════════════
    ANIMATED BACKGROUND — Canvas with floating gradient orbs
@@ -109,12 +110,11 @@ function seededRandom(seed: number) {
 }
 
 function FloatingParticles() {
+  // Deterministic particles — same count on server and client to avoid hydration mismatch.
+  // 30 particles is lightweight enough for all viewports.
   const particles = useMemo(() => {
     const rand = seededRandom(42)
-    // Use fewer particles on mobile for performance
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-    const count = isMobile ? 15 : 30
-    return Array.from({ length: count }, (_, i) => ({
+    return Array.from({ length: 30 }, (_, i) => ({
       id: i,
       x: rand() * 100,
       y: rand() * 100,
@@ -199,14 +199,7 @@ function Navbar({ onEnterApp }: { onEnterApp: () => void }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center shadow-lg shadow-[#9D8BA7]/20 overflow-hidden">
-            <img
-              src="/aether-logo.png"
-              alt="Aether"
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <span className="font-serif text-xl font-bold text-[#1a1a2e]">Aether</span>
+          <AetherLogo size={36} showText />
         </div>
 
         {/* Nav Links (Desktop) */}
@@ -605,9 +598,7 @@ function AiChatDemo() {
         >
           {/* Window header */}
           <div className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-[#1a1a2e]/5 bg-[#FFFAF5]">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#9D8BA7] to-[#6D597A] flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-            </div>
+            <AetherLogo size={32} />
             <div>
               <p className="text-sm font-semibold text-[#1a1a2e]">Aether</p>
               <p className="text-xs text-[#1a1a2e]/40">AI Search</p>
@@ -920,14 +911,7 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#6D597A] to-[#9D8BA7] flex items-center justify-center overflow-hidden">
-              <img
-                src="/aether-logo.png"
-                alt="Aether"
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <span className="font-serif text-lg font-bold text-[#1a1a2e]">Aether</span>
+            <AetherLogo size={32} showText />
           </div>
 
           <div className="flex items-center gap-6 text-sm text-[#1a1a2e]/40">
