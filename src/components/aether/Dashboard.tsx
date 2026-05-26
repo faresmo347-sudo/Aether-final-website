@@ -2,11 +2,10 @@
 
 import { useState, useCallback, useMemo, memo, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles } from 'lucide-react'
+import { Mic, FileText, Link2, ImageIcon, X, Upload, Plus, Brain, ArrowLeft, FolderOpen, Loader2, Eye, Sparkles, CheckSquare, Square, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
 import { createMemory, getMemoryCount } from '@/lib/supabase/data'
-import { mockCollections } from '@/components/aether/mock-data'
 import type { Memory, MemoryType } from '@/components/aether/types'
 
 // ---------- helpers ----------
@@ -86,25 +85,43 @@ const MemoryCard = memo(function MemoryCard({ memory, onClick }: { memory: Memor
 })
 
 const EmptyState = memo(function EmptyState({ collectionName }: { collectionName?: string }) {
+  const { setCaptureModalOpen } = useAetherStore()
+
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-      <div className="h-16 w-16 rounded-2xl bg-[#9D8BA7]/10 flex items-center justify-center mb-4">
-        {collectionName ? (
-          <FolderOpen className="size-8 text-[#9D8BA7]" />
-        ) : (
-          <Brain className="size-8 text-[#9D8BA7]" />
-        )}
+      {/* Animated brain icon with pulse ring */}
+      <div className="relative mb-6">
+        <div className="absolute inset-0 rounded-full bg-[#9D8BA7]/20 animate-ping opacity-20" />
+        <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-[#9D8BA7]/15 to-[#9D8BA7]/5 flex items-center justify-center ring-4 ring-[#9D8BA7]/10">
+          {collectionName ? (
+            <FolderOpen className="size-9 text-[#9D8BA7]" />
+          ) : (
+            <Brain className="size-9 text-[#9D8BA7]" />
+          )}
+        </div>
       </div>
-      <h3 className="font-serif text-lg font-semibold text-foreground">
+
+      <h3 className="font-serif text-xl font-semibold text-foreground">
         {collectionName
           ? `No memories in ${collectionName} yet`
-          : 'No memories here yet'}
+          : 'Your second brain is empty'}
       </h3>
-      <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+      <p className="text-sm text-muted-foreground mt-2 max-w-xs leading-relaxed">
         {collectionName
-          ? `Start capturing memories to this collection and they'll appear here. Tap the + button to add your first one.`
-          : 'Start capturing to fill your second brain'}
+          ? `Start capturing memories to this collection and they'll appear here.`
+          : 'Start capturing your first memory — ideas, notes, links, anything you want to remember.'}
       </p>
+
+      {/* Prominent CTA button for new users */}
+      {!collectionName && (
+        <button
+          onClick={() => setCaptureModalOpen(true)}
+          className="mt-6 inline-flex items-center gap-2 bg-[#9D8BA7] hover:bg-[#7A6B85] text-white rounded-xl px-6 py-3 text-sm font-semibold shadow-lg shadow-[#9D8BA7]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#9D8BA7]/30 hover:-translate-y-0.5"
+        >
+          <Plus className="size-4" />
+          Add Your First Memory
+        </button>
+      )}
     </div>
   )
 })
@@ -112,11 +129,11 @@ const EmptyState = memo(function EmptyState({ collectionName }: { collectionName
 // ---------- FilterBar (memoized) ----------
 
 const FilterBar = memo(function FilterBar() {
-  const { activeFilter, setActiveFilter, collectionFilter, setCollectionFilter } = useAetherStore()
+  const { activeFilter, setActiveFilter, collectionFilter, setCollectionFilter, collections } = useAetherStore()
 
   const activeCollection = useMemo(
-    () => (collectionFilter ? mockCollections.find((c) => c.id === collectionFilter) : null),
-    [collectionFilter]
+    () => (collectionFilter ? collections.find((c) => c.id === collectionFilter) : null),
+    [collectionFilter, collections]
   )
 
   if (activeCollection) {
@@ -846,13 +863,62 @@ function getSmartFallbackTags(content: string, type: string): string[] {
 // ---------- main Dashboard ----------
 
 export default function Dashboard() {
-  const { memories, activeFilter, collectionFilter, setSelectedMemoryId, setCurrentView } = useAetherStore()
+  const { memories, activeFilter, collectionFilter, setSelectedMemoryId, setCurrentView, collections, searchQuery, setSearchQuery } = useAetherStore()
+  const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set())
 
   // Get the active collection name for empty state messaging
   const activeCollection = useMemo(
-    () => (collectionFilter ? mockCollections.find((c) => c.id === collectionFilter) : null),
-    [collectionFilter]
+    () => (collectionFilter ? collections.find((c) => c.id === collectionFilter) : null),
+    [collectionFilter, collections]
   )
+
+  // Extract actionable tasks from memory content
+  const extractedTasks = useMemo(() => {
+    const taskPatterns = [
+      /(?:i\s+)?need\s+to\s+(.+?)(?:\.|$)/gi,
+      /(?:i\s+)?should\s+(.+?)(?:\.|$)/gi,
+      /(?:i\s+)?must\s+(.+?)(?:\.|$)/gi,
+      /(?:i\s+)?have\s+to\s+(.+?)(?:\.|$)/gi,
+      /todo:?\s*(.+?)(?:\.|$)/gi,
+      /follow\s+up\s+(?:with\s+)?(.+?)(?:\.|$)/gi,
+      /(?:don't\s+)?forget\s+(?:to\s+)?(.+?)(?:\.|$)/gi,
+      /remind\s+me\s+(?:to\s+)?(.+?)(?:\.|$)/gi,
+    ]
+    const tasks: { id: string; text: string; memoryId: string; memoryTitle: string }[] = []
+
+    for (const mem of memories) {
+      const content = mem.content || ''
+      for (const pattern of taskPatterns) {
+        pattern.lastIndex = 0
+        let match
+        while ((match = pattern.exec(content)) !== null && tasks.length < 8) {
+          const text = match[1].trim()
+          if (text.length >= 5) {
+            const id = `task-${mem.id}-${tasks.length}`
+            // Avoid duplicates
+            if (!tasks.some(t => t.text.toLowerCase() === text.toLowerCase())) {
+              tasks.push({
+                id,
+                text: text.charAt(0).toUpperCase() + text.slice(1),
+                memoryId: mem.id,
+                memoryTitle: mem.title,
+              })
+            }
+          }
+        }
+      }
+    }
+    return tasks
+  }, [memories])
+
+  const toggleTask = useCallback((taskId: string) => {
+    setCompletedTasks(prev => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
+  }, [])
 
   // Filter and sort memories (memoized)
   const sortedMemories = useMemo(() => {
@@ -865,10 +931,21 @@ export default function Dashboard() {
       filtered = filtered.filter((m) => m.collectionId === collectionFilter)
     }
 
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        (m) =>
+          m.title.toLowerCase().includes(q) ||
+          m.content.toLowerCase().includes(q) ||
+          m.tags.some((t) => t.toLowerCase().includes(q))
+      )
+    }
+
     return [...filtered].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
-  }, [memories, activeFilter, collectionFilter])
+  }, [memories, activeFilter, collectionFilter, searchQuery])
 
   const handleMemoryClick = useCallback((id: string) => {
     setSelectedMemoryId(id)
@@ -877,10 +954,68 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Search Bar */}
+      <div className="shrink-0 mb-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search memories..."
+            className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#9D8BA7]/30 focus:ring-2 focus:ring-[#9D8BA7]/10 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Filter Bar */}
       <div className="shrink-0 pb-4">
         <FilterBar />
       </div>
+
+      {/* Extracted Tasks Section */}
+      {extractedTasks.length > 0 && (
+        <div className="shrink-0 mb-4">
+          <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckSquare className="size-4 text-[#9D8BA7]" />
+              <h3 className="text-sm font-semibold text-foreground">Extracted Tasks</h3>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {completedTasks.size}/{extractedTasks.length} done
+              </span>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+              {extractedTasks.map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => toggleTask(task.id)}
+                  className="w-full flex items-start gap-2.5 text-left group"
+                >
+                  {completedTasks.has(task.id) ? (
+                    <CheckSquare className="size-4 text-[#9D8BA7] shrink-0 mt-0.5" />
+                  ) : (
+                    <Square className="size-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-[#9D8BA7] transition-colors" />
+                  )}
+                  <div className="min-w-0">
+                    <p className={`text-sm leading-relaxed transition-colors ${completedTasks.has(task.id) ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                      {task.text}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">from: {task.memoryTitle}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Memory Feed */}
       <div className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar">

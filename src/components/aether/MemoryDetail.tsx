@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dialog'
 import { useAetherStore } from '@/store/aether-store'
 import { useToast } from '@/hooks/use-toast'
+import { deleteMemoryById, updateMemoryById } from '@/lib/supabase/data'
 import type { Memory, MemoryType } from '@/components/aether/types'
 
 const typeConfig: Record<MemoryType, { icon: typeof Mic; label: string; color: string }> = {
@@ -127,7 +128,7 @@ function DeleteDialog({
 
 /* ─────────── Memory Detail View ─────────── */
 export function MemoryDetail() {
-  const { memories, selectedMemoryId, setSelectedMemoryId, setCurrentView, deleteMemory } = useAetherStore()
+  const { memories, selectedMemoryId, setSelectedMemoryId, setCurrentView, deleteMemory, updateMemory } = useAetherStore()
   const { toast } = useToast()
 
   const [isEditing, setIsEditing] = useState(false)
@@ -137,6 +138,7 @@ export function MemoryDetail() {
   const [newTag, setNewTag] = useState('')
   const [aiInsight, setAiInsight] = useState('')
   const [isLoadingInsight, setIsLoadingInsight] = useState(false)
+  const [insightError, setInsightError] = useState(false)
   const [showOriginal, setShowOriginal] = useState(false)
 
   const memory = useMemo(
@@ -145,11 +147,12 @@ export function MemoryDetail() {
   )
 
   // Fetch AI insights when memory loads
-  useEffect(() => {
+  const fetchInsight = () => {
     if (!memory) return
     let cancelled = false
-    const fetchInsight = async () => {
+    const doFetch = async () => {
       setIsLoadingInsight(true)
+      setInsightError(false)
       setAiInsight('')
       try {
         const res = await fetch('/api/ai/insights', {
@@ -169,6 +172,7 @@ export function MemoryDetail() {
       } catch {
         if (!cancelled) {
           setAiInsight('')
+          setInsightError(true)
         }
       } finally {
         if (!cancelled) {
@@ -176,10 +180,15 @@ export function MemoryDetail() {
         }
       }
     }
-    fetchInsight()
+    doFetch()
     return () => {
       cancelled = true
     }
+  }
+
+  useEffect(() => {
+    if (!memory) return
+    return fetchInsight()
   }, [memory?.id])
 
   // Find related memories: same collection or matching tags
@@ -205,10 +214,19 @@ export function MemoryDetail() {
     toast({ title: 'Link copied!', description: 'Memory link has been copied to your clipboard.' })
   }
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!memory) return
     if (isEditing) {
-      // Save — update content in the memory store
+      // Save — update content in the store and Supabase
+      if (editContent.trim() !== memory.content) {
+        updateMemory(memory.id, { content: editContent.trim() })
+        try {
+          await updateMemoryById(memory.id, { content: editContent.trim() })
+        } catch {
+          // Supabase update failed silently — store is already updated locally
+        }
+        toast({ title: 'Memory updated!', description: 'Your changes have been saved.' })
+      }
       setIsEditing(false)
     } else {
       setEditContent(memory.content)
@@ -216,20 +234,39 @@ export function MemoryDetail() {
     }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!memory) return
     deleteMemory(memory.id)
     setDeleteDialogOpen(false)
     setSelectedMemoryId(null)
     setCurrentView('dashboard')
+    try {
+      await deleteMemoryById(memory.id)
+    } catch {
+      // Supabase delete failed silently — already removed from local store
+    }
   }
 
-  const handleAddTag = () => {
-    if (!newTag.trim()) return
-    // Tags are managed in mock-data, we just clear the input for demo
+  const handleAddTag = async () => {
+    if (!newTag.trim() || !memory) return
+    const tagToAdd = newTag.trim()
+    // Avoid duplicate tags
+    if (memory.tags.includes(tagToAdd)) {
+      setNewTag('')
+      setShowTagInput(false)
+      toast({ title: 'Tag already exists', description: `"${tagToAdd}" is already on this memory.` })
+      return
+    }
+    const updatedTags = [...memory.tags, tagToAdd]
+    updateMemory(memory.id, { tags: updatedTags })
     setNewTag('')
     setShowTagInput(false)
-    toast({ title: 'Tag added!', description: `"${newTag.trim()}" has been added to this memory.` })
+    toast({ title: 'Tag added!', description: `"${tagToAdd}" has been added to this memory.` })
+    try {
+      await updateMemoryById(memory.id, { tags: updatedTags })
+    } catch {
+      // Supabase update failed silently — store is already updated locally
+    }
   }
 
   // Empty state
@@ -345,6 +382,21 @@ export function MemoryDetail() {
                 <Skeleton className="h-4 w-5/6" />
                 <Skeleton className="h-4 w-4/6" />
                 <Skeleton className="h-4 w-3/4" />
+                <p className="text-xs text-muted-foreground italic mt-2">Aether is thinking...</p>
+              </div>
+            ) : insightError ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground italic">
+                  Could not generate insight right now — try again
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchInsight}
+                  className="rounded-xl border-[#9D8BA7]/20 text-[#9D8BA7] hover:bg-[#9D8BA7]/5 w-fit"
+                >
+                  Retry
+                </Button>
               </div>
             ) : aiInsight ? (
               <p className="text-sm text-foreground leading-relaxed">
@@ -362,9 +414,12 @@ export function MemoryDetail() {
           className="mb-6"
         >
           <Button
-            variant="outline"
             onClick={() => setShowOriginal(!showOriginal)}
-            className="rounded-xl border-border text-foreground hover:bg-[#9D8BA7]/5 hover:border-[#9D8BA7]/20 hover:text-[#9D8BA7] transition-all duration-300 w-full sm:w-auto"
+            className={`rounded-xl transition-all duration-300 w-full sm:w-auto font-semibold shadow-sm ${
+              showOriginal
+                ? 'bg-[#9D8BA7] text-white hover:bg-[#6D597A] shadow-md'
+                : 'bg-[#9D8BA7]/10 text-[#9D8BA7] border border-[#9D8BA7]/20 hover:bg-[#9D8BA7] hover:text-white shadow-md hover:shadow-lg'
+            }`}
           >
             {showOriginal ? (
               <>
@@ -484,10 +539,7 @@ export function MemoryDetail() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => {
-                    setIsEditing(false)
-                    toast({ title: 'Memory updated!', description: 'Your changes have been saved.' })
-                  }}
+                  onClick={handleEdit}
                   className="rounded-xl bg-[#9D8BA7] hover:bg-[#6D597A] text-white"
                 >
                   <Check size={14} className="mr-1" />

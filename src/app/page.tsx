@@ -964,6 +964,9 @@ export default function Home() {
     setAuthScreen,
   } = useAetherStore()
 
+  // Track whether initial data has been loaded for this session
+  const dataLoadedRef = useRef(false)
+
   // Initialize dark mode from store on mount
   useEffect(() => {
     if (darkMode) {
@@ -973,19 +976,41 @@ export default function Home() {
     }
   }, [darkMode])
 
+  // Load user data from Supabase — called once per auth session
+  const loadUserData = useCallback(async (userId: string) => {
+    if (dataLoadedRef.current) return
+    dataLoadedRef.current = true
+
+    setIsLoadingMemories(true)
+    try {
+      const profile = await getProfile(userId)
+      if (profile) {
+        setUser(profile)
+        setProfile(profile)
+      }
+      const [memResult, collections] = await Promise.all([
+        fetchMemories(0),
+        fetchCollections(),
+      ])
+      setMemories(memResult.memories)
+      setCollections(collections)
+    } catch (err) {
+      console.error('Failed to load user data:', err)
+    } finally {
+      setIsLoadingMemories(false)
+    }
+  }, [setUser, setProfile, setMemories, setCollections, setIsLoadingMemories])
+
   // Check auth state on mount and listen for changes
   useEffect(() => {
     const supabase = createClient()
 
-    // Check initial session
+    // Check initial session — load data immediately if already signed in
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        const profile = await getProfile(session.user.id)
-        if (profile) {
-          setUser(profile)
-          setProfile(profile)
-        }
+        await loadUserData(session.user.id)
+        setCurrentView('dashboard')
       }
     }
     checkSession()
@@ -994,27 +1019,10 @@ export default function Home() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await getProfile(session.user.id)
-          if (profile) {
-            setUser(profile)
-            setProfile(profile)
-          }
-          // Load user data
-          setIsLoadingMemories(true)
-          try {
-            const [memResult, collections] = await Promise.all([
-              fetchMemories(0),
-              fetchCollections(),
-            ])
-            setMemories(memResult.memories)
-            setCollections(collections)
-          } catch (err) {
-            console.error('Failed to load user data:', err)
-          } finally {
-            setIsLoadingMemories(false)
-          }
+          await loadUserData(session.user.id)
           setCurrentView('dashboard')
         } else if (event === 'SIGNED_OUT') {
+          dataLoadedRef.current = false
           setUser(null)
           setProfile({ name: '', email: '', initials: '' })
           setMemories([])
@@ -1027,45 +1035,26 @@ export default function Home() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [setUser, setProfile, setMemories, setCollections, setIsLoadingMemories, setCurrentView])
+  }, [loadUserData, setUser, setProfile, setMemories, setCollections, setCurrentView])
 
-  // Load data when app opens (if already authenticated)
-  useEffect(() => {
-    if (isAuthenticated && currentView === 'dashboard') {
-      const loadData = async () => {
-        setIsLoadingMemories(true)
-        try {
-          const [memResult, collections] = await Promise.all([
-            fetchMemories(0),
-            fetchCollections(),
-          ])
-          setMemories(memResult.memories)
-          setCollections(collections)
-        } catch (err) {
-          console.error('Failed to load data:', err)
-        } finally {
-          setIsLoadingMemories(false)
-        }
-      }
-      loadData()
-    }
-  }, [isAuthenticated, currentView, setMemories, setCollections, setIsLoadingMemories])
-
+  // "Enter Aether" on the landing page should go to signup for new users
   const handleEnterApp = useCallback(() => {
     if (isAuthenticated) {
       setCurrentView('dashboard')
     } else {
-      setCurrentView('signin')
+      setAuthScreen('signup')
+      setCurrentView('signup')
     }
-  }, [isAuthenticated, setCurrentView])
+  }, [isAuthenticated, setCurrentView, setAuthScreen])
 
   const handleAuthSwitch = useCallback((screen: 'signup' | 'signin' | 'forgot') => {
     setAuthScreen(screen)
     setCurrentView(screen === 'forgot' ? 'forgot-password' : screen)
   }, [setAuthScreen, setCurrentView])
 
+  // After auth success, the onAuthStateChange listener handles data loading + navigation
   const handleAuthSuccess = useCallback(() => {
-    // Auth state change listener will handle the rest
+    // Auth state change listener will handle data loading and navigation
   }, [])
 
   // Render auth screens
@@ -1084,9 +1073,9 @@ export default function Home() {
     return <LandingPage onEnterApp={handleEnterApp} />
   }
 
-  // If trying to access app but not authenticated, redirect to signin
+  // If trying to access app but not authenticated, redirect to signup
   if (!isAuthenticated) {
-    return <SignIn onSwitch={handleAuthSwitch} onSuccess={handleAuthSuccess} />
+    return <SignUp onSwitch={handleAuthSwitch} onSuccess={handleAuthSuccess} />
   }
 
   // App views

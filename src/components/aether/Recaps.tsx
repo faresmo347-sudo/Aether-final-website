@@ -2,19 +2,63 @@
 
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, CheckCircle2, Circle, Calendar, TrendingUp, Clock, Sparkles, Mic, Link2, Image as ImageIcon, FileText } from 'lucide-react'
+import { Brain, Calendar, TrendingUp, Clock, Sparkles, Mic, Link2, Image as ImageIcon, FileText, Plus } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
 
-const mockTasks = [
-  { id: 't1', text: 'Review Q2 product roadmap notes', completed: true },
-  { id: 't2', text: 'Follow up with Sarah about book recommendation', completed: false },
-  { id: 't3', text: 'Research fintech micro-lending platforms', completed: false },
-]
+interface ExtractedTask {
+  id: string
+  text: string
+  completed: boolean
+  memoryId: string
+}
 
 export function Recaps() {
-  const { recapView, setRecapView, memories } = useAetherStore()
-  const [tasks, setTasks] = useState(mockTasks)
+  const { recapView, setRecapView, memories, setCaptureModalOpen, setCurrentView } = useAetherStore()
+
+  // Extract real tasks from memories using pattern matching
+  const extractedTasks = useMemo<ExtractedTask[]>(() => {
+    const actionPatterns = [
+      /need\s+to\s+(.+)/i,
+      /should\s+(.+)/i,
+      /must\s+(.+)/i,
+      /have\s+to\s+(.+)/i,
+      /todo:?\s*(.+)/i,
+      /follow\s+up\s+(.+)/i,
+      /call\s+(.+)/i,
+      /email\s+(.+)/i,
+      /schedule\s+(.+)/i,
+      /remind\s+me\s+(.+)/i,
+      /don'?t\s+forget\s+(.+)/i,
+    ]
+
+    const tasks: ExtractedTask[] = []
+
+    for (const mem of memories) {
+      const textToSearch = `${mem.title} ${mem.content}`
+      for (const pattern of actionPatterns) {
+        const match = pattern.exec(textToSearch)
+        if (match && match[1]) {
+          const taskText = match[1].trim().replace(/[.!;]+$/, '')
+          // Only add if meaningful (> 5 chars) and not a duplicate
+          if (taskText.length > 5 && !tasks.some(t => t.text.toLowerCase() === taskText.toLowerCase())) {
+            tasks.push({
+              id: `task-${mem.id}-${tasks.length}`,
+              text: taskText.charAt(0).toUpperCase() + taskText.slice(1),
+              completed: false,
+              memoryId: mem.id,
+            })
+          }
+        }
+      }
+    }
+
+    return tasks.slice(0, 10) // Cap at 10 tasks
+  }, [memories])
+
+  // Track completed task IDs separately
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set())
 
   const today = new Date()
   const todayStr = today.toLocaleDateString('en-US', {
@@ -22,6 +66,13 @@ export function Recaps() {
     month: 'long',
     day: 'numeric',
   })
+
+  // Today's memories
+  const todayMemories = useMemo(() => {
+    const startOfDay = new Date(today)
+    startOfDay.setHours(0, 0, 0, 0)
+    return memories.filter((m) => new Date(m.createdAt) >= startOfDay)
+  }, [memories, today])
 
   const recentMemories = memories.slice(0, 4)
 
@@ -76,11 +127,81 @@ export function Recaps() {
     }
   }, [memories])
 
+  // Dynamic AI Insight based on actual data
+  const aiInsight = useMemo(() => {
+    if (todayMemories.length === 0) {
+      return 'No memories captured yet \u2014 your recap will appear once you start saving memories'
+    }
+
+    // Count today's memories by type
+    const typeCounts: Record<string, number> = {}
+    const todayTags: string[] = []
+    for (const mem of todayMemories) {
+      const label = mem.type === 'voice' ? 'voice note' : mem.type === 'link' ? 'link' : mem.type === 'image' ? 'image' : 'note'
+      typeCounts[label] = (typeCounts[label] || 0) + 1
+      for (const tag of mem.tags) {
+        if (!todayTags.includes(tag)) todayTags.push(tag)
+      }
+    }
+
+    const parts: string[] = []
+    const typeParts = Object.entries(typeCounts).map(([type, count]) => `${count} ${type}${count > 1 ? 's' : ''}`)
+    if (typeParts.length > 0) {
+      parts.push(`You saved ${typeParts.join(', ')} today`)
+    }
+
+    if (todayTags.length > 0) {
+      const tagStr = todayTags.slice(0, 3).join(', ')
+      parts.push(`touching on ${tagStr}`)
+    }
+
+    // Compare with week average
+    const weekTotal = weekDays.reduce((sum, d) => sum + d.memories, 0)
+    const weekAvg = weekTotal / 7
+    if (todayMemories.length > weekAvg + 1) {
+      parts.push('you seem to be in a productive flow')
+    } else if (todayMemories.length >= 3) {
+      parts.push('great momentum today')
+    }
+
+    return parts.join(' — ') + '.'
+  }, [todayMemories, weekDays])
+
+  // Most active day - derived from real weekDays data
+  const mostActiveDay = useMemo(() => {
+    const activeDays = weekDays.filter(d => d.memories > 0)
+    if (activeDays.length === 0) {
+      return null
+    }
+    const best = activeDays.reduce((a, b) => a.memories > b.memories ? a : b)
+    return best
+  }, [weekDays])
+
+  const totalWeekMemories = useMemo(() => weekDays.reduce((sum, d) => sum + d.memories, 0), [weekDays])
+
   const toggleTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
-    )
+    setCompletedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
   }
+
+  // Merge extracted tasks with completion state
+  const displayTasks = useMemo(() =>
+    extractedTasks.map((t) => ({ ...t, completed: completedTaskIds.has(t.id) })),
+    [extractedTasks, completedTaskIds]
+  )
+
+  const handleCaptureMemory = () => {
+    setCurrentView('dashboard')
+    setTimeout(() => setCaptureModalOpen(true), 100)
+  }
+
+  // Check empty states
+  const isDailyEmpty = recentMemories.length === 0 && displayTasks.length === 0
+  const isWeeklyEmpty = totalWeekMemories === 0 && topThemes.length === 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -150,110 +271,144 @@ export function Recaps() {
               </p>
             </div>
 
-            {/* Key Memories */}
-            <div>
-              <h3
-                className="text-lg font-bold mb-3 text-foreground"
-                style={{ fontFamily: "'Playfair Display', serif" }}
+            {/* Empty state for daily view */}
+            {isDailyEmpty ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
               >
-                Key Memories
-              </h3>
-              <div className="space-y-3">
-                {recentMemories.map((memory, index) => (
-                  <motion.div
-                    key={memory.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.08, duration: 0.25 }}
-                    className="bg-card rounded-2xl p-4 shadow-sm border border-border"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-[#9D8BA7]/12"
-                      >
-                        {memory.type === 'voice' ? <Mic className="size-4" style={{ color: '#9D8BA7' }} /> : memory.type === 'link' ? <Link2 className="size-4" style={{ color: '#9D8BA7' }} /> : memory.type === 'image' ? <ImageIcon className="size-4" style={{ color: '#9D8BA7' }} /> : <FileText className="size-4" style={{ color: '#9D8BA7' }} />}
-                      </div>
-                      <div className="min-w-0">
-                        <h4
-                          className="font-semibold text-sm truncate text-foreground"
-                        >
-                          {memory.title}
-                        </h4>
-                        <p
-                          className="text-xs mt-0.5 line-clamp-2 text-muted-foreground"
-                        >
-                          {memory.content}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Tasks Extracted */}
-            <div>
-              <h3
-                className="text-lg font-bold mb-3 text-foreground"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Tasks Extracted
-              </h3>
-              <div className="bg-card rounded-2xl p-5 shadow-sm border border-border space-y-3">
-                {tasks.map((task, index) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1, duration: 0.2 }}
-                    className="flex items-center gap-3"
-                  >
-                    <Checkbox
-                      checked={task.completed}
-                      onCheckedChange={() => toggleTask(task.id)}
-                      className="shrink-0"
-                    />
-                    <span
-                      className={`text-sm transition-all text-foreground ${
-                        task.completed ? 'line-through opacity-50' : ''
-                      }`}
-                    >
-                      {task.text}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* AI Insight Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.3 }}
-              className="bg-card rounded-2xl p-5 shadow-sm border-l-4"
-              style={{ borderLeftColor: '#9D8BA7' }}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="size-10 rounded-xl flex items-center justify-center shrink-0 bg-[#9D8BA7]/12"
+                <div className="size-16 rounded-2xl flex items-center justify-center mb-4 bg-[#9D8BA7]/12">
+                  <Brain className="size-8" style={{ color: '#9D8BA7' }} />
+                </div>
+                <h3
+                  className="text-lg font-bold text-foreground mb-2"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
                 >
-                  <Brain className="size-5" style={{ color: '#9D8BA7' }} />
-                </div>
-                <div>
-                  <h4
-                    className="font-semibold text-sm mb-1"
-                    style={{ color: '#9D8BA7' }}
-                  >
-                    AI Insight
-                  </h4>
-                  <p className="text-sm leading-relaxed text-foreground">
-                    You saved 4 ideas about your startup today — you seem to be in a
-                    creative flow. This is your most productive day this week for idea
-                    generation.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+                  No memories captured yet
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xs mb-6">
+                  Your recap will appear once you start saving memories
+                </p>
+                <Button
+                  onClick={handleCaptureMemory}
+                  className="gap-2 bg-[#9D8BA7] hover:bg-[#9D8BA7]/90 text-white"
+                >
+                  <Plus className="size-4" />
+                  Capture Memory
+                </Button>
+              </motion.div>
+            ) : (
+              <>
+                {/* Key Memories */}
+                {recentMemories.length > 0 && (
+                  <div>
+                    <h3
+                      className="text-lg font-bold mb-3 text-foreground"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
+                    >
+                      Key Memories
+                    </h3>
+                    <div className="space-y-3">
+                      {recentMemories.map((memory, index) => (
+                        <motion.div
+                          key={memory.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.08, duration: 0.25 }}
+                          className="bg-card rounded-2xl p-4 shadow-sm border border-border"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-[#9D8BA7]/12"
+                            >
+                              {memory.type === 'voice' ? <Mic className="size-4" style={{ color: '#9D8BA7' }} /> : memory.type === 'link' ? <Link2 className="size-4" style={{ color: '#9D8BA7' }} /> : memory.type === 'image' ? <ImageIcon className="size-4" style={{ color: '#9D8BA7' }} /> : <FileText className="size-4" style={{ color: '#9D8BA7' }} />}
+                            </div>
+                            <div className="min-w-0">
+                              <h4
+                                className="font-semibold text-sm truncate text-foreground"
+                              >
+                                {memory.title}
+                              </h4>
+                              <p
+                                className="text-xs mt-0.5 line-clamp-2 text-muted-foreground"
+                              >
+                                {memory.content}
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tasks Extracted */}
+                {displayTasks.length > 0 && (
+                  <div>
+                    <h3
+                      className="text-lg font-bold mb-3 text-foreground"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
+                    >
+                      Tasks Extracted
+                    </h3>
+                    <div className="bg-card rounded-2xl p-5 shadow-sm border border-border space-y-3">
+                      {displayTasks.map((task, index) => (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1, duration: 0.2 }}
+                          className="flex items-center gap-3"
+                        >
+                          <Checkbox
+                            checked={task.completed}
+                            onCheckedChange={() => toggleTask(task.id)}
+                            className="shrink-0"
+                          />
+                          <span
+                            className={`text-sm transition-all text-foreground ${
+                              task.completed ? 'line-through opacity-50' : ''
+                            }`}
+                          >
+                            {task.text}
+                          </span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Insight Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                  className="bg-card rounded-2xl p-5 shadow-sm border-l-4"
+                  style={{ borderLeftColor: '#9D8BA7' }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="size-10 rounded-xl flex items-center justify-center shrink-0 bg-[#9D8BA7]/12"
+                    >
+                      <Brain className="size-5" style={{ color: '#9D8BA7' }} />
+                    </div>
+                    <div>
+                      <h4
+                        className="font-semibold text-sm mb-1"
+                        style={{ color: '#9D8BA7' }}
+                      >
+                        AI Insight
+                      </h4>
+                      <p className="text-sm leading-relaxed text-foreground">
+                        {aiInsight}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -263,128 +418,164 @@ export function Recaps() {
             transition={{ duration: 0.3 }}
             className="space-y-6"
           >
-            {/* Week Overview Timeline */}
-            <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-              <h2
-                className="text-lg font-bold mb-4 text-foreground"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Week Overview
-              </h2>
-              <div className="flex items-end justify-between gap-2 sm:gap-4">
-                {weekDays.map((d) => (
-                  <div key={d.day} className="flex flex-col items-center gap-2 flex-1">
-                    <span
-                      className={`text-xs font-medium ${d.isHighlight ? 'text-[#9D8BA7]' : 'text-muted-foreground'}`}
-                    >
-                      {d.memories}
-                    </span>
-                    <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: `${Math.max((d.activity / maxActivity) * 80, 4)}px` }}
-                      transition={{ duration: 0.5, delay: 0.1 }}
-                      className="w-full rounded-t-lg"
-                      style={{
-                        backgroundColor: d.isHighlight
-                          ? '#9D8BA7'
-                          : 'rgba(157, 139, 167, 0.2)',
-                        maxWidth: 40,
-                      }}
-                    />
-                    <span
-                      className={`text-xs font-medium ${d.isHighlight ? 'font-bold text-[#9D8BA7]' : 'text-muted-foreground'}`}
-                    >
-                      {d.day}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Top Themes */}
-            <div>
-              <h3
-                className="text-lg font-bold mb-3 text-foreground"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Top Themes
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {topThemes.map((theme) => (
-                  <span
-                    key={theme.name}
-                    className="px-3 py-1.5 rounded-full text-sm font-medium bg-[#9D8BA7]/10 text-foreground"
-                  >
-                    {theme.name}
-                    <span className="ml-1 opacity-50">({theme.count})</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Most Active Day */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
-              className="bg-card rounded-2xl p-5 shadow-sm border border-border"
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="size-10 rounded-xl flex items-center justify-center shrink-0 bg-[#9D8BA7]/12"
-                >
-                  <TrendingUp className="size-5" style={{ color: '#9D8BA7' }} />
-                </div>
-                <div>
-                  <h4
-                    className="font-semibold text-sm mb-0.5"
-                    style={{ color: '#9D8BA7' }}
-                  >
-                    Most Active Day
-                  </h4>
-                  <p className="text-sm leading-relaxed text-foreground">
-                    Wednesday was your most productive day with 7 memories
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Memory Lane */}
-            <div>
-              <h3
-                className="text-lg font-bold mb-3 text-foreground"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                <Sparkles className="inline size-5 mr-1.5 -mt-0.5" style={{ color: '#9D8BA7' }} />
-                Memory Lane
-              </h3>
+            {/* Empty state for weekly view */}
+            {isWeeklyEmpty ? (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.3 }}
-                className="bg-card rounded-2xl p-5 shadow-sm border border-border"
+                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
               >
-                <p className="text-xs mb-2 font-medium" style={{ color: '#9D8BA7' }}>
-                  One month ago today...
-                </p>
-                <h4
-                  className="font-bold text-sm mb-1 text-foreground"
+                <div className="size-16 rounded-2xl flex items-center justify-center mb-4 bg-[#9D8BA7]/12">
+                  <Brain className="size-8" style={{ color: '#9D8BA7' }} />
+                </div>
+                <h3
+                  className="text-lg font-bold text-foreground mb-2"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
                 >
-                  {nostalgicMemory.title}
-                </h4>
-                <p
-                  className="text-sm leading-relaxed text-muted-foreground"
-                >
-                  {nostalgicMemory.content}
+                  No memories this week yet
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xs mb-6">
+                  Start capturing to see your activity
                 </p>
-                <p
-                  className="text-xs mt-2 flex items-center gap-1 text-muted-foreground"
+                <Button
+                  onClick={handleCaptureMemory}
+                  className="gap-2 bg-[#9D8BA7] hover:bg-[#9D8BA7]/90 text-white"
                 >
-                  <Clock className="size-3" />
-                  {nostalgicMemory.date}
-                </p>
+                  <Plus className="size-4" />
+                  Capture Memory
+                </Button>
               </motion.div>
-            </div>
+            ) : (
+              <>
+                {/* Week Overview Timeline */}
+                <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+                  <h2
+                    className="text-lg font-bold mb-4 text-foreground"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    Week Overview
+                  </h2>
+                  <div className="flex items-end justify-between gap-2 sm:gap-4">
+                    {weekDays.map((d) => (
+                      <div key={d.day} className="flex flex-col items-center gap-2 flex-1">
+                        <span
+                          className={`text-xs font-medium ${d.isHighlight ? 'text-[#9D8BA7]' : 'text-muted-foreground'}`}
+                        >
+                          {d.memories}
+                        </span>
+                        <motion.div
+                          initial={{ height: 0 }}
+                          animate={{ height: `${Math.max((d.activity / maxActivity) * 80, 4)}px` }}
+                          transition={{ duration: 0.5, delay: 0.1 }}
+                          className="w-full rounded-t-lg"
+                          style={{
+                            backgroundColor: d.isHighlight
+                              ? '#9D8BA7'
+                              : 'rgba(157, 139, 167, 0.2)',
+                            maxWidth: 40,
+                          }}
+                        />
+                        <span
+                          className={`text-xs font-medium ${d.isHighlight ? 'font-bold text-[#9D8BA7]' : 'text-muted-foreground'}`}
+                        >
+                          {d.day}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Themes */}
+                {topThemes.length > 0 && (
+                  <div>
+                    <h3
+                      className="text-lg font-bold mb-3 text-foreground"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
+                    >
+                      Top Themes
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {topThemes.map((theme) => (
+                        <span
+                          key={theme.name}
+                          className="px-3 py-1.5 rounded-full text-sm font-medium bg-[#9D8BA7]/10 text-foreground"
+                        >
+                          {theme.name}
+                          <span className="ml-1 opacity-50">({theme.count})</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Most Active Day */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15, duration: 0.3 }}
+                  className="bg-card rounded-2xl p-5 shadow-sm border border-border"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="size-10 rounded-xl flex items-center justify-center shrink-0 bg-[#9D8BA7]/12"
+                    >
+                      <TrendingUp className="size-5" style={{ color: '#9D8BA7' }} />
+                    </div>
+                    <div>
+                      <h4
+                        className="font-semibold text-sm mb-0.5"
+                        style={{ color: '#9D8BA7' }}
+                      >
+                        Most Active Day
+                      </h4>
+                      <p className="text-sm leading-relaxed text-foreground">
+                        {mostActiveDay
+                          ? `${mostActiveDay.day} was your most productive day with ${mostActiveDay.memories} memor${mostActiveDay.memories === 1 ? 'y' : 'ies'}`
+                          : 'No memories this week yet \u2014 start capturing to see your activity'}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Memory Lane */}
+                <div>
+                  <h3
+                    className="text-lg font-bold mb-3 text-foreground"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    <Sparkles className="inline size-5 mr-1.5 -mt-0.5" style={{ color: '#9D8BA7' }} />
+                    Memory Lane
+                  </h3>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25, duration: 0.3 }}
+                    className="bg-card rounded-2xl p-5 shadow-sm border border-border"
+                  >
+                    <p className="text-xs mb-2 font-medium" style={{ color: '#9D8BA7' }}>
+                      One month ago today...
+                    </p>
+                    <h4
+                      className="font-bold text-sm mb-1 text-foreground"
+                    >
+                      {nostalgicMemory.title}
+                    </h4>
+                    <p
+                      className="text-sm leading-relaxed text-muted-foreground"
+                    >
+                      {nostalgicMemory.content}
+                    </p>
+                    <p
+                      className="text-xs mt-2 flex items-center gap-1 text-muted-foreground"
+                    >
+                      <Clock className="size-3" />
+                      {nostalgicMemory.date}
+                    </p>
+                  </motion.div>
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </div>

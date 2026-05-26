@@ -126,6 +126,23 @@ export async function createMemory(memory: {
   return mapMemoryFromDb(data)
 }
 
+export async function updateMemoryById(id: string, updates: { content?: string; tags?: string[]; title?: string }) {
+  const supabase = createClient()
+  const dbUpdates: Record<string, any> = {}
+  if (updates.content !== undefined) dbUpdates.content = updates.content
+  if (updates.tags !== undefined) dbUpdates.tags = updates.tags
+  if (updates.title !== undefined) dbUpdates.title = updates.title
+
+  if (Object.keys(dbUpdates).length === 0) return
+
+  const { error } = await supabase
+    .from('memories')
+    .update(dbUpdates)
+    .eq('id', id)
+
+  if (error) throw error
+}
+
 export async function deleteMemoryById(id: string) {
   const supabase = createClient()
   const { error } = await supabase

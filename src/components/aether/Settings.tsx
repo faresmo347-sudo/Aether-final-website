@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
-  User,
   Bell,
-  Moon,
   Cpu,
   Sparkles,
   Crown,
@@ -15,6 +13,7 @@ import {
   X,
   Loader2,
   LogOut,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +28,16 @@ import {
 import { useAetherStore } from '@/store/aether-store'
 import { useToast } from '@/hooks/use-toast'
 import { signOut, updateProfile, exportAllMemories } from '@/lib/supabase/data'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import type { CaptureTab } from './types'
 
 export function Settings() {
@@ -59,6 +68,17 @@ export function Settings() {
 
   // Export loading state
   const [isExporting, setIsExporting] = useState(false)
+
+  // Delete account dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  // ──── Dark mode: sync class on mount ────
+  useEffect(() => {
+    const saved = localStorage.getItem('aether-dark-mode') === 'true'
+    if (saved) {
+      document.documentElement.classList.add('dark')
+    }
+  }, [])
 
   // ──── Profile handlers ────
   const handleEditStart = () => {
@@ -108,6 +128,26 @@ export function Settings() {
       document.documentElement.classList.remove('dark')
     }
   }, [setDarkMode])
+
+  // ──── Bloom upgrade handler ────
+  const handleBloomUpgrade = useCallback(() => {
+    toast({
+      title: 'Bloom plan coming soon!',
+      description: 'Stay tuned for unlimited memories and premium features.',
+    })
+  }, [toast])
+
+  // ──── Delete account handler ────
+  const handleDeleteAccount = useCallback(async () => {
+    try {
+      await signOut()
+      setCurrentView('landing')
+      toast({ title: 'Signed out', description: 'Your account session has been ended.' })
+    } catch (err) {
+      console.error('Sign out failed:', err)
+      toast({ title: 'Error', description: 'Could not sign out. Please try again.', variant: 'destructive' })
+    }
+  }, [setCurrentView, toast])
 
   // ──── Export handler ────
   const handleExport = useCallback(async () => {
@@ -409,6 +449,7 @@ export function Settings() {
                   <Button
                     className="rounded-full text-xs shadow-sm bg-[#9D8BA7] hover:bg-[#7A6B85] text-white"
                     size="sm"
+                    onClick={handleBloomUpgrade}
                   >
                     $5.99/mo
                   </Button>
@@ -452,6 +493,7 @@ export function Settings() {
                 variant="outline"
                 className="w-full rounded-xl justify-start gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                 size="sm"
+                onClick={() => setDeleteDialogOpen(true)}
               >
                 <Trash2 className="size-4" />
                 Delete account
@@ -460,6 +502,32 @@ export function Settings() {
           </motion.div>
         </div>
       </div>
+
+      {/* ── Delete Account Confirmation Dialog ── */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-red-500" />
+              Delete Account
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All your memories, collections, and
+              personal data will be permanently deleted. Are you sure you want to
+              proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Yes, delete my account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

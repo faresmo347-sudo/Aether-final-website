@@ -156,6 +156,11 @@ export function Collections() {
         </div>
 
         {/* Collections Grid */}
+        {collections.length > 0 && collections.every((c) => c.memoryCount === 0) && (
+          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+            Save memories and assign them to collections to see them organized here
+          </p>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
           {collections.map((collection, index) => (
             <motion.div
@@ -198,28 +203,34 @@ export function Collections() {
           >
             Your Tags
           </h2>
-          <div className="flex flex-wrap gap-2">
-            {tagCounts.map((tag, index) => (
-              <motion.button
-                key={tag.name}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.03, duration: 0.2 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleTagClick}
-                className={`px-3 py-1.5 rounded-full transition-colors bg-[#9D8BA7]/8 text-foreground hover:bg-[#9D8BA7]/15 ${
-                  tag.count >= 6
-                    ? 'text-base'
-                    : tag.count >= 4
-                      ? 'text-sm'
-                      : 'text-xs'
-                }`}
-              >
-                {tag.name}
-              </motion.button>
-            ))}
-          </div>
+          {tagCounts.length === 0 ? (
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Tags will appear here as you save memories with content
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {tagCounts.map((tag, index) => (
+                <motion.button
+                  key={tag.name}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.03, duration: 0.2 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleTagClick}
+                  className={`px-3 py-1.5 rounded-full transition-colors bg-[#9D8BA7]/8 text-foreground hover:bg-[#9D8BA7]/15 ${
+                    tag.count >= 6
+                      ? 'text-base'
+                      : tag.count >= 4
+                        ? 'text-sm'
+                        : 'text-xs'
+                  }`}
+                >
+                  {tag.name}
+                </motion.button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

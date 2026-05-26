@@ -18,6 +18,7 @@ interface AetherState {
   setMemories: (memories: Memory[]) => void
   addMemory: (memory: Memory) => void
   deleteMemory: (id: string) => void
+  updateMemory: (id: string, updates: Partial<Memory>) => void
   selectedMemoryId: string | null
   setSelectedMemoryId: (id: string | null) => void
 
@@ -101,6 +102,9 @@ export const useAetherStore = create<AetherState>((set) => ({
   setMemories: (memories) => set({ memories }),
   addMemory: (memory) => set((s) => ({ memories: [memory, ...s.memories] })),
   deleteMemory: (id) => set((s) => ({ memories: s.memories.filter((m) => m.id !== id) })),
+  updateMemory: (id, updates) => set((s) => ({
+    memories: s.memories.map((m) => m.id === id ? { ...m, ...updates } : m),
+  })),
   selectedMemoryId: null,
   setSelectedMemoryId: (id) => set({ selectedMemoryId: id }),
 

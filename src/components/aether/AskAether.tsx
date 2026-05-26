@@ -10,6 +10,7 @@ import {
   Link2,
   Image as ImageIcon,
   Loader2,
+  Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAetherStore } from '@/store/aether-store'
@@ -140,7 +141,7 @@ const ChatBubble = memo(function ChatBubble({
 
 /* ─────────── Ask Aether ─────────── */
 export function AskAether() {
-  const { chatMessages, addChatMessage, isChatThinking, setChatThinking, memories } = useAetherStore()
+  const { chatMessages, addChatMessage, isChatThinking, setChatThinking, memories, setCurrentView, setCaptureModalOpen } = useAetherStore()
   const [input, setInput] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -258,8 +259,32 @@ export function AskAether() {
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
         <div className="max-w-3xl mx-auto space-y-4">
-          {/* Starter questions — only show when no messages */}
-          {chatMessages.length === 0 && (
+          {/* Empty state — no memories yet */}
+          {memories.length === 0 && chatMessages.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-[#9D8BA7]/15 to-[#9D8BA7]/5 flex items-center justify-center mb-6 shadow-sm">
+                <Brain size={36} className="text-[#9D8BA7]" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">No memories yet</h2>
+              <p className="text-sm text-muted-foreground max-w-xs mb-6 leading-relaxed">
+                Save something first and then ask me about it
+              </p>
+              <Button
+                onClick={() => {
+                  setCurrentView('dashboard')
+                  setCaptureModalOpen(true)
+                }}
+                className="rounded-full px-5 shadow-lg shadow-[#9D8BA7]/20"
+                style={{ backgroundColor: '#9D8BA7', color: '#fff', border: 'none' }}
+              >
+                <Plus className="size-4 mr-1.5" />
+                Capture a Memory
+              </Button>
+            </div>
+          )}
+
+          {/* Starter questions — only show when user has memories but hasn't chatted yet */}
+          {memories.length > 0 && chatMessages.length === 0 && (
             <div className="space-y-4">
               <p className="text-center text-sm text-muted-foreground mb-2">Try asking...</p>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
