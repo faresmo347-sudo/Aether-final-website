@@ -1,36 +1,31 @@
 ---
-Task ID: 1
+Task ID: 2
 Agent: Main Agent
-Task: Build Aether AI-Powered Second Brain Landing Page
+Task: Build full Aether app with 6 screens (Dashboard, Memory Detail, Ask Aether, Collections, Recaps, Settings)
 
 Work Log:
-- Extracted PRD text from uploaded PDF: Product_Requirements_Document__Aether_-_AI_Powered.pdf
-- Analyzed full requirements: Landing page with Hero, Features, How It Works, Testimonials, Pricing, Footer
-- Design specs: Color palette (#F8F9FA, #212529, #6D597A, #E0F2F1, #FFFFFF), fonts (Inter body, Playfair Display headings)
-- Generated Aether logo using z-ai image generation CLI (public/aether-logo.png)
-- Generated hero section image (public/aether-hero.png) and decorative wave pattern (public/aether-wave.png)
-- Updated layout.tsx with Inter + Playfair Display fonts and Aether metadata
-- Updated globals.css with Aether color palette, custom theme variables, animation keyframes, custom scrollbar
-- Built complete landing page (page.tsx) with all sections:
-  - AnimatedBackground: Canvas-based floating gradient orbs
-  - FloatingParticles: 30 subtle lavender particles with Framer Motion
-  - Navbar: Fixed, transparent→frosted glass on scroll, mobile hamburger menu, logo + nav + CTAs
-  - HeroSection: Parallax scroll, gradient headline, badge, dual CTAs, browser mockup with memory cards
-  - FeaturesGrid: 6 animated cards (Voice, Retrieval, Tags, Privacy, Links, Recaps) with hover effects
-  - HowItWorks: 3 steps (Capture, Indexes, Recall) with connection line and step orbs
-  - AIChatDemo: Interactive chat demo with 3 preset queries and contextual AI responses
-  - Testimonials: 3 user quotes with star ratings and avatar initials
-  - Pricing: Free (Seed) vs Premium (Bloom) side-by-side comparison with feature lists
-  - FinalCTA: Gradient card with dot pattern background and CTA
-  - Footer: 4-column links, social icons, branding, Egypt attribution
-- All sections use AnimatedSection wrapper for scroll-triggered reveal animations
-- Lint passed with zero errors
-- Dev server running successfully on port 3000
+- Created types.ts with MemoryType, Memory, Collection, ChatMessage, AppView, CaptureTab, RecapView types
+- Created mock-data.ts with 10 varied memory cards, 6 collections, 20 tags, and AI response templates
+- Created Zustand store at store/aether-store.ts with all app state (navigation, memories, capture, search, chat, recaps, settings)
+- Updated color palette to new scheme: #FFFAF5 bg, #1a1a2e text, #9D8BA7 lavender accent
+- Updated layout.tsx and globals.css with new colors
+- Dispatched 4 parallel agents to build components:
+  1. AppShell.tsx - Sidebar (desktop) + bottom nav (mobile) + header + floating capture button
+  2. Dashboard.tsx - Memory feed with filters + quick capture modal with 4 tabs
+  3. MemoryDetail.tsx + AskAether.tsx - Detail view with AI summary + chat interface
+  4. Collections.tsx + Recaps.tsx + Settings.tsx - All three screens
+- Rewrote page.tsx with state-based routing (landing vs app views)
+- Landing page has "Enter Aether" button that navigates to dashboard
+- All components follow design system: #FFFAF5 bg, #1a1a2e text, #9D8BA7 lavender, soft shadows, fluid transitions
+- Lint passes clean, server compiles and serves with HTTP 200
 
 Stage Summary:
-- Complete Aether landing page built with all PRD sections
-- Canvas-based animated background with floating orbs
-- Interactive AI chat demo section
-- Responsive design with mobile navigation
-- Premium aesthetic: soft shadows, fluid transitions, lavender accent color
-- Framer Motion animations throughout (scroll reveal, parallax, hover effects)
+- Full app built with 6 functional screens using mock data
+- Zustand store for global state management
+- Mobile-first responsive design with sidebar/bottom nav
+- Quick capture modal with Text/Voice/Link/Image tabs
+- AI chat interface with mock responses and typing indicator
+- Collections grid with tag cloud
+- Daily/Weekly recaps with AI insights
+- Settings with toggles, subscription, and danger zone
+- All screens accessible from sidebar navigation

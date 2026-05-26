@@ -44,11 +44,11 @@
   --radius-xl: calc(var(--radius) + 4px);
   
   /* Aether Custom Colors */
-  --color-aether-bg: #F8F9FA;
-  --color-aether-text: #212529;
-  --color-aether-lavender: #6D597A;
-  --color-aether-lavender-light: #8B7399;
-  --color-aether-lavender-dark: #544560;
+  --color-aether-bg: #FFFAF5;
+  --color-aether-text: #1a1a2e;
+  --color-aether-lavender: #9D8BA7;
+  --color-aether-lavender-light: #B8A8C4;
+  --color-aether-lavender-dark: #7A6B85;
   --color-aether-teal: #E0F2F1;
   --color-aether-teal-dark: #80CBC4;
   --color-aether-surface: #FFFFFF;
@@ -143,12 +143,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #6D597A40;
+  background: #9D8BA740;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #6D597A80;
+  background: #9D8BA780;
 }
 
 /* Smooth scrolling */
