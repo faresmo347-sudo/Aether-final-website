@@ -1,31 +1,23 @@
 ---
-Task ID: 2
-Agent: Main Agent
-Task: Build full Aether app with 6 screens (Dashboard, Memory Detail, Ask Aether, Collections, Recaps, Settings)
+Task ID: 1
+Agent: main
+Task: Fix performance, collections filter, AI auto-tagging, voice transcription, and Ask Aether accuracy
 
 Work Log:
-- Created types.ts with MemoryType, Memory, Collection, ChatMessage, AppView, CaptureTab, RecapView types
-- Created mock-data.ts with 10 varied memory cards, 6 collections, 20 tags, and AI response templates
-- Created Zustand store at store/aether-store.ts with all app state (navigation, memories, capture, search, chat, recaps, settings)
-- Updated color palette to new scheme: #FFFAF5 bg, #1a1a2e text, #9D8BA7 lavender accent
-- Updated layout.tsx and globals.css with new colors
-- Dispatched 4 parallel agents to build components:
-  1. AppShell.tsx - Sidebar (desktop) + bottom nav (mobile) + header + floating capture button
-  2. Dashboard.tsx - Memory feed with filters + quick capture modal with 4 tabs
-  3. MemoryDetail.tsx + AskAether.tsx - Detail view with AI summary + chat interface
-  4. Collections.tsx + Recaps.tsx + Settings.tsx - All three screens
-- Rewrote page.tsx with state-based routing (landing vs app views)
-- Landing page has "Enter Aether" button that navigates to dashboard
-- All components follow design system: #FFFAF5 bg, #1a1a2e text, #9D8BA7 lavender, soft shadows, fluid transitions
-- Lint passes clean, server compiles and serves with HTTP 200
+- Created 3 backend API routes: /api/ai/tags (LLM-based tag generation), /api/ai/transcribe (ASR-based voice transcription), /api/ai/search (LLM-based memory search)
+- Rewrote Dashboard.tsx with React.memo on MemoryCard, EmptyState, FilterBar; replaced AnimatePresence with simple div rendering; added useMemo for filtered/sorted memories; collection filter works instantly via memoized computation
+- Rewrote AskAether.tsx with memoized components (ChatBubble, InlineMemoryCard, TypingIndicator); replaced mock keyword matching with real API call to /api/ai/search; LLM searches actual memories and returns relevant results; if nothing found, honestly says so
+- Rewrote AppShell.tsx: removed framer-motion from all nav items (SidebarNavItem, BottomNavItem); replaced motion.button with plain buttons; removed AnimatePresence wrapper from content area for instant page transitions
+- Updated QuickCaptureModal in Dashboard: added real MediaRecorder API for voice recording; sends audio base64 to /api/ai/transcribe for ASR transcription; auto-tagging now calls /api/ai/tags with LLM to generate relevant tags; shows loading state while saving
+- Collections filter already worked correctly in Dashboard (memoized filtered results); empty state is shown immediately when no memories match
+- Lint passes with zero errors
+- Dev server running on port 3000 and responding
 
 Stage Summary:
-- Full app built with 6 functional screens using mock data
-- Zustand store for global state management
-- Mobile-first responsive design with sidebar/bottom nav
-- Quick capture modal with Text/Voice/Link/Image tabs
-- AI chat interface with mock responses and typing indicator
-- Collections grid with tag cloud
-- Daily/Weekly recaps with AI insights
-- Settings with toggles, subscription, and danger zone
-- All screens accessible from sidebar navigation
+- 3 new API routes created for AI capabilities using z-ai-web-dev-sdk
+- All components memoized with React.memo where appropriate
+- Removed framer-motion from navigation (biggest performance win)
+- Page transitions are now instant (no AnimatePresence wait)
+- AI auto-tagging uses LLM to generate 2-4 relevant tags per memory
+- Voice recording uses real MediaRecorder API + ASR transcription
+- Ask Aether uses LLM to search through actual memories with relevance ranking
