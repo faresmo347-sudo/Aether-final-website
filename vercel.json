@@ -4,7 +4,6 @@
   "buildCommand": "next build",
   "installCommand": "npm install",
   "devCommand": "next dev",
-  "regions": ["iad1"],
   "headers": [
     {
       "source": "/aether-icon.svg",
